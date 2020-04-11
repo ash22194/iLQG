@@ -8,3 +8,6 @@
 /iLQR_Matlab/run_BASE_43467.m
 /iLQR_Matlab/run_LOCAL_43467.m
 /iLQR_Matlab/run_REMOTE_43467.m
+
+**.mat
+.DS_Store

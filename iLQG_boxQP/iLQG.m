@@ -81,8 +81,9 @@ function [x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op)
 defaults = {'lims',           [],...            control limits
             'parallel',       true,...          use parallel line-search?
             'Alpha',          10.^linspace(0,-3,11),... backtracking coefficients
-            'tolFun',         1e-4,...          reduction exit criterion
-            'tolGrad',        1e-4,...          gradient exit criterion
+            'gamma_',         0.9999,...          discount
+            'tolFun',         1e-8,...          reduction exit criterion
+            'tolGrad',        1e-8,...          gradient exit criterion
             'maxIter',        500,...           maximum iterations            
             'lambda',         1,...             initial value for lambda
             'dlambda',        1,...             initial value for dlambda
@@ -140,7 +141,7 @@ trace(1).dlambda = dlambda;
 if size(x0,2) == 1
     diverge = true;
     for alpha = Op.Alpha
-        [x,un,cost]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,DYNCST,Op.lims,[]);
+        [x,un,cost]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,Op.gamma_,DYNCST,Op.lims,[]);
         % simplistic divergence test
         if all(abs(x(:)) < 1e8)
             u = un;
@@ -208,7 +209,7 @@ for iter = 1:Op.maxIter
     while ~backPassDone
         
         t_back   = tic;
-        [diverge, Vx, Vxx, l, L, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,Op.regType,Op.lims,u);
+        [diverge, Vx, Vxx, l, L, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,Op.gamma_,Op.regType,Op.lims,u);
         trace(iter).time_backward = toc(t_back);
         
         if diverge
@@ -242,7 +243,7 @@ for iter = 1:Op.maxIter
     if backPassDone
         t_fwd = tic;
         if Op.parallel  % parallel line-search
-            [xnew,unew,costnew] = forward_pass(x0 ,u, L, x(:,1:N), l, Op.Alpha, DYNCST,Op.lims,Op.diffFn);
+            [xnew,unew,costnew] = forward_pass(x0 ,u, L, x(:,1:N), l, Op.Alpha, Op.gamma_, DYNCST,Op.lims,Op.diffFn);
             Dcost               = sum(cost(:)) - sum(costnew,2);
             [dcost, w]          = max(Dcost); % should be positive
             alpha               = Op.Alpha(w);
@@ -261,7 +262,7 @@ for iter = 1:Op.maxIter
             end
         else            % serial backtracking line-search
             for alpha = Op.Alpha
-                [xnew,unew,costnew]   = forward_pass(x0 ,u+l*alpha, L, x(:,1:N),[],1,DYNCST,Op.lims,Op.diffFn);
+                [xnew,unew,costnew]   = forward_pass(x0 ,u+l*alpha, L, x(:,1:N),[],1,Op.gamma_,DYNCST,Op.lims,Op.diffFn);
                 dcost    = sum(cost(:)) - sum(costnew(:));
                 expected = -alpha*(dV(1) + alpha*dV(2));
                 if expected > 0

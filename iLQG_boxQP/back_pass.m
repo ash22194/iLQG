@@ -1,4 +1,4 @@
-function [diverge, Vx, Vxx, k, K, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,regType,lims,u)
+function [diverge, Vx, Vxx, k, K, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,gamma_,regType,lims,u)
 % Perform the Ricatti-Mayne backward pass
 
 % tensor multiplication for DDP terms
@@ -26,33 +26,33 @@ Vxx(:,:,N)  = cxx(:,:,N);
 diverge  = 0;
 for i = N-1:-1:1
     
-    Qu  = cu(:,i)      + fu(:,:,i)'*Vx(:,i+1);
-    Qx  = cx(:,i)      + fx(:,:,i)'*Vx(:,i+1);
-    Qux = cxu(:,:,i)'  + fu(:,:,i)'*Vxx(:,:,i+1)*fx(:,:,i);
+    Qu  = cu(:,i)      + gamma_ * fu(:,:,i)' * Vx(:,i+1);
+    Qx  = cx(:,i)      + gamma_ * fx(:,:,i)' * Vx(:,i+1);
+    Qux = cxu(:,:,i)'  + gamma_ * fu(:,:,i)' * Vxx(:,:,i+1)*fx(:,:,i);
     if ~isempty(fxu)
         fxuVx = vectens(Vx(:,i+1),fxu(:,:,:,i));
-        Qux   = Qux + fxuVx;
+        Qux   = Qux + gamma_ * fxuVx;
     end
     
-    Quu = cuu(:,:,i)   + fu(:,:,i)'*Vxx(:,:,i+1)*fu(:,:,i);
+    Quu = cuu(:,:,i)   + gamma_ * fu(:,:,i)' * Vxx(:,:,i+1) * fu(:,:,i);
     if ~isempty(fuu)
         fuuVx = vectens(Vx(:,i+1),fuu(:,:,:,i));
-        Quu   = Quu + fuuVx;
+        Quu   = Quu + gamma_ * fuuVx;
     end
     
-    Qxx = cxx(:,:,i)   + fx(:,:,i)'*Vxx(:,:,i+1)*fx(:,:,i);
+    Qxx = cxx(:,:,i)   + gamma_ * fx(:,:,i)' * Vxx(:,:,i+1) * fx(:,:,i);
     if ~isempty(fxx)
-        Qxx = Qxx + vectens(Vx(:,i+1),fxx(:,:,:,i));
+        Qxx = Qxx + gamma_ * vectens(Vx(:,i+1),fxx(:,:,:,i));
     end
     
     Vxx_reg = (Vxx(:,:,i+1) + lambda*eye(n)*(regType == 2));
     
-    Qux_reg = cxu(:,:,i)'   + fu(:,:,i)'*Vxx_reg*fx(:,:,i);
+    Qux_reg = cxu(:,:,i)'   + gamma_ * fu(:,:,i)'*Vxx_reg*fx(:,:,i);
     if ~isempty(fxu)
-        Qux_reg = Qux_reg + fxuVx;
+        Qux_reg = Qux_reg + gamma_ * fxuVx;
     end
     
-    QuuF = cuu(:,:,i)  + fu(:,:,i)'*Vxx_reg*fu(:,:,i) + lambda*eye(m)*(regType == 1);
+    QuuF = cuu(:,:,i)  + gamma_ * fu(:,:,i)'*Vxx_reg*fu(:,:,i) + lambda*eye(m)*(regType == 1);
     
     if ~isempty(fuu)
         QuuF = QuuF + fuuVx;
