@@ -5,3 +5,6 @@ Based on "Control Limited Differential Dynamic Programming" Tassa, Yuval, Nicola
 Building on Yuval Tassa's implementation here: http://www.mathworks.com/matlabcentral/fileexchange/52069-ilqg-ddp-trajectory-optimization
 
 See here for an intuitive explanation: https://studywolf.wordpress.com/2016/02/03/the-iterative-linear-quadratic-regulator-method/
+
+# Decomposed iLQR
+Implementation of iLQR through system decomposition into decoupled and cascaded subsystems
