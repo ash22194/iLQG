@@ -20,7 +20,7 @@ U = zeros(2, size(u, 2));
 U(U_DIMS_FREE, :) = u;
 X = zeros(4, size(x, 2));
 X(X_DIMS_FREE, :) = x;
-X(X_DIMS_FIXED, :) = l_point(X_DIMS_FIXED)*ones(1, size(x, 2));
+X(X_DIMS_FIXED, :) = repmat(l_point(X_DIMS_FIXED), [1, size(x,2)]);
 
 zero_dyn = [X(2,:);
             (mp*l*(X(4,:).^2).*sin(X(3,:)) + 0.5*mp*g*sin(2*X(3,:)))./(mc + mp*sin(X(3,:)).^2);

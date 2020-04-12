@@ -289,7 +289,9 @@ end
 % Cart - F, Pole - T
 sys_CartFPoleTDec = sys;
 sys_CartFPoleTDec.U_DIMS_FREE = [1;2];
+sys_CartFPoleTDec.U_DIMS_FIXED = [];
 sys_CartFPoleTDec.X_DIMS_FREE = [1;2;3;4];
+sys_CartFPoleTDec.X_DIMS_FIXED = [];
 XCartFPoleTDec = zeros(4, NUM_CTRL+1, size(x_starts, 2));
 UCartFPoleTDec = zeros(2, NUM_CTRL, size(x_starts, 2));
 
@@ -305,7 +307,9 @@ end
 % Cart - T, Pole - F
 sys_CartTPoleFDec = sys;
 sys_CartTPoleFDec.U_DIMS_FREE = [1;2];
+sys_CartTPoleFDec.U_DIMS_FIXED = [];
 sys_CartTPoleFDec.X_DIMS_FREE = [1;2;3;4];
+sys_CartTPoleFDec.X_DIMS_FIXED = [];
 XCartTPoleFDec = zeros(4, NUM_CTRL+1, size(x_starts, 2));
 UCartTPoleFDec = zeros(2, NUM_CTRL, size(x_starts, 2));
 
@@ -339,8 +343,8 @@ for jj=1:1:size(x_starts, 2)
      KJoint(:,sys_joint.X_DIMS_FREE,1:NUM_CTRL, jj)] = iLQG(dyn_joint, ...
                                                     x_starts(sys_joint.X_DIMS_FREE, jj), ...
                                                     Uinit, Op);
-    XJoint(sys_joint.X_DIMS_FIXED,:, jj) = sys_joint.l_point(sys_joint.X_DIMS_FIXED)...
-                                              * ones(1, size(XJoint, 2));
+    XJoint(sys_joint.X_DIMS_FIXED,:, jj) = repmat(sys_joint.l_point(sys_joint.X_DIMS_FIXED), [1, size(XJoint,2)]);
+    jj
 end
 
 status = "zeroinit_finallpoint_nowraparound";

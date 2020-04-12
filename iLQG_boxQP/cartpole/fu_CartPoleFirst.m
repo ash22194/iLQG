@@ -13,7 +13,7 @@ U_DIMS_FREE = sys.U_DIMS_FREE;
 
 X = zeros(4, size(x, 2));
 X(X_DIMS_FREE, :) = x;
-X(X_DIMS_FIXED, :) = l_point(X_DIMS_FIXED)*ones(1, size(x, 2));
+X(X_DIMS_FIXED, :) = repmat(l_point(X_DIMS_FIXED), [1, size(x,2)]);
 
 fu = zeros(4, 2, size(x, 2));
 fu(2,1,:) = 1.0./(mc + mp*sin(X(3,:)).^2);
