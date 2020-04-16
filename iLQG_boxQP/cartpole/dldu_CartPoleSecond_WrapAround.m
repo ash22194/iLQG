@@ -12,14 +12,7 @@ function dl = dldu_CartPoleSecond_WrapAround(sys, x, u, k, K, xn)
     R22 = sys.R(U_DIMS_FREE, :);
     R22 = R22(:, U_DIMS_FREE);
     
-    while (any(x(3,:) > 2*pi))
-        gthan = x(3,:) > 2*pi;
-        x(3,gthan) = x(3,gthan) - 2*pi;
-    end
-    while (any(x(3,:) < 0))
-        lthan = x(3,:) < 0;
-        x(3,lthan) = x(3,lthan) + 2*pi;
-    end
+    x(3,:) = mod(x(3,:), 2*pi);
     
     dl = zeros(length(U_DIMS_FREE), size(u, 2));
     for ii=1:1:size(u, 2)

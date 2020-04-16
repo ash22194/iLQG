@@ -11,14 +11,7 @@ function cost = l_CartPoleSecond_WrapAround(sys, x, u, k, K, xn)
         action(:,ii) = max(lims(:,1), min(lims(:,2), action(:, ii)));
     end
     
-    while(any(x(3, :) > 2*pi))
-        greaterThan = x(3,:) > 2*pi;
-        x(3,greaterThan) = x(3,greaterThan) - 2*pi;
-    end
-    while(any(x(3, :) < 0))
-        lessThan = x(3,:) < 0;
-        x(3,lessThan) = x(3,lessThan) + 2*pi;
-    end
+    x(3,:) = mod(x(3,:), 2*pi);
     
     goal = [sys.goal(1); sys.goal(2); sys.goal(3); sys.goal(4)];
     cost = diag((x - goal)'*sys.Q*(x - goal) + action'*sys.R*action)';
