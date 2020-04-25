@@ -13,6 +13,6 @@ function cost = l_CartPoleSecond(sys, x, u, k, K, xn)
     end
 
     goal = [sys.goal(1); sys.goal(2); sys.goal(3); sys.goal(4)];
-    cost = diag((x - goal)'*sys.Q*(x - goal) + action'*sys.R*action);
+    cost = diag((x - goal)'*sys.Q*(x - goal) + action'*sys.R*action)';
     
 end

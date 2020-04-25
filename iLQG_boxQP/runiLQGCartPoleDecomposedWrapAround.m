@@ -30,10 +30,14 @@ Op.gamma_ = sys.gamma_;
 Op.Alpha = [1];
 
 % Define starts
-cart_starts = [-1, -0.5, 0, 0.5, 1;
-                0,  0,   0, 0,   0];
-pole_starts = [7*pi/4, 5*pi/4, 3*pi/4, pi/4, 0;
-               0,      0,      0,      0,    0];
+%cart_starts = [-1, -0.5, 0, 0.5, 1;
+%                0,  0,   0, 0,   0];
+cart_starts = [-0.75, -0.5, 0, 0.5, 0.75;
+                0,     0,   0, 0,   0];
+%pole_starts = [7*pi/4, 5*pi/4, 3*pi/4, pi/4, 0;
+%               0,      0,      0,      0,    0];
+pole_starts = [pi/2, 2*pi/3, 5*pi/6, 7*pi/6, 4*pi/3, 3*pi/2;
+               0,      0,      0,      0,    0,      0];
 x_starts = nan(4, size(cart_starts,2)*size(pole_starts,2));
 for ii=1:1:size(cart_starts, 2)
     for jj=1:1:size(pole_starts, 2)
@@ -294,6 +298,9 @@ sys_CartFPoleTDec.X_DIMS_FREE = [1;2;3;4];
 sys_CartFPoleTDec.X_DIMS_FIXED = [];
 XCartFPoleTDec = zeros(4, NUM_CTRL+1, size(x_starts, 2));
 UCartFPoleTDec = zeros(2, NUM_CTRL, size(x_starts, 2));
+U_DIMS = cell(2,1);
+U_DIMS{1,1} = [1];
+U_DIMS{2,1} = [2];
 
 for jj=1:1:size(x_starts, 2)
     dyn_CartFPoleTDec = @(x, u) ...
@@ -301,7 +308,8 @@ for jj=1:1:size(x_starts, 2)
     [XCartFPoleTDec(:,:, jj), UCartFPoleTDec(:,:, jj)] = ForwardPassDec([UCartFF(:,:, jj); UPoleTF(:,:, jj)], ...
                                                                         [KCartFF(:,:,:, jj); KPoleTF(:,:,:, jj)], ...
                                                                         [XCartFF(:,:, jj); XPoleTF(:,:, jj)], ...
-                                                                         x_starts(:, jj), dyn_CartFPoleTDec);
+                                                                        U_DIMS, ... 
+                                                                        x_starts(:, jj), dyn_CartFPoleTDec);
 end
 
 % Cart - T, Pole - F
@@ -317,9 +325,10 @@ for jj=1:1:size(x_starts, 2)
     dyn_CartTPoleFDec = @(x, u) ...
                cartpole_dyn_first_wraparound_cst(sys_CartTPoleFDec, x, u, sys_CartTPoleFDec.full_DDP);
     [XCartTPoleFDec(:,:, jj), UCartTPoleFDec(:,:, jj)] = ForwardPassDec([UPoleFF(:,:, jj); UCartTF(:,:, jj)], ...
-                                                                            [KPoleFF(:,:,:, jj); KCartTF(:,:,:, jj)], ...
-                                                                            [XPoleFF(:,:, jj); XCartTF(:,:, jj)], ...
-                                                                            x_starts(:, jj), dyn_CartTPoleFDec);
+                                                                        [KPoleFF(:,:,:, jj); KCartTF(:,:,:, jj)], ...
+                                                                        [XPoleFF(:,:, jj); XCartTF(:,:, jj)], ...
+                                                                        U_DIMS, ...   
+                                                                        x_starts(:, jj), dyn_CartTPoleFDec);
 end
 
 %% Joint
@@ -347,7 +356,7 @@ for jj=1:1:size(x_starts, 2)
     jj
 end
 
-status = "zeroinit_finallpoint_wraparound";
+status = "zeroinit_finallpoint_wraparound_closerstarts";
 
-save(strcat('data/iLQGCartPoleDecomposedWrapAround_mc=',num2str(sys.mc),',mp=',num2str(sys.mp),'.mat'));
+save(strcat('data/iLQGCartPoleDecomposedWrapAround_closerstarts_mc=',num2str(sys.mc),',mp=',num2str(sys.mp),'.mat'));
 

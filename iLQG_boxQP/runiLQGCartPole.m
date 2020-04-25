@@ -13,7 +13,7 @@ sys.l = 0.9;
 sys.g = 9.81;
 sys.T = 5;
 sys.dt = 0.001;
-sys.gamma_ = 0.9995;
+sys.gamma_ = 0.997;
 sys.Q = [25, 0, 0, 0;
          0, 0.02, 0, 0;
          0, 0, 25, 0;
@@ -62,7 +62,7 @@ for ii=1:1:size(cart_starts, 2)
         x_starts(:, (ii-1)*size(pole_starts, 2) + jj) = [cart_starts(:, ii); pole_starts(:, jj)];
     end
 end
-x_starts = [-0.5;0;pi/4;0];
+% x_starts = [-0.5;0;pi/4;0];
 
 %% Run iLQG
 NUM_CTRL = round(sys.T / sys.dt);
@@ -92,4 +92,4 @@ for jj=1:1:size(x_starts, 2)
     disp(strcat("Iteration : ", num2str(jj), ", J : ", num2str(J_joint(jj))));
 end
 
-save(strcat('data/iLQG_mc=', num2str(sys.mc),',mp=',num2str(sys.mp),'_zeroinit.mat'));
+% save(strcat('data/iLQG_mc=', num2str(sys.mc),',mp=',num2str(sys.mp),'_zeroinit.mat'));
