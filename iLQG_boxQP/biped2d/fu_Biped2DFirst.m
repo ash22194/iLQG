@@ -36,10 +36,10 @@ function fu = fu_Biped2DFirst(sys, x, u)
     fu(4,3,:) = -ca1./(X(1,:)*sys.m);
     fu(4,4,:) = -ca2./(l2*sys.m);
     
-    fu(6,1,:) = sys.d*cos(X(2,:) - X(5,:));
-    fu(6,2,:) = sys.d*cos(a2 - X(5,:));
-    fu(6,3,:) = 1 + sys.d./X(1,:).*sin(X(2,:) - X(5,:));
-    fu(6,4,:) = 1 + sys.d./l2.*sin(a2 - X(5,:));
+    fu(6,1,:) = contact1.*(sys.d*cos(X(2,:) - X(5,:)))/sys.I;
+    fu(6,2,:) = contact2.*(sys.d*cos(a2 - X(5,:)))/sys.I;
+    fu(6,3,:) = contact1.*(1 + sys.d./X(1,:).*sin(X(2,:) - X(5,:)))/sys.I;
+    fu(6,4,:) = contact2.*(1 + sys.d./l2.*sin(a2 - X(5,:)))/sys.I;
 
     fu = fu(X_DIMS_FREE, :, :);
     fu = fu(:, U_DIMS_FREE, :);

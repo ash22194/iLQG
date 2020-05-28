@@ -26,7 +26,7 @@ function dx = f_Biped2DFirst(sys, x, u)
     contact2  = (l2<=sys.l0);
     F1  = U(1,:).*contact1;
     F2  = U(2,:).*contact2;
-    Fo1 = U(3,:).*contact1./x(1,:);
+    Fo1 = U(3,:).*contact1./X(1,:);
     Fo2 = U(4,:).*contact2./l2;
     
     x_hip_dot = X(3,:) + sys.d*cos(X(5,:)).*X(6,:);
