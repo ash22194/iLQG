@@ -19,7 +19,7 @@ function dx = f_Biped2DFirst(sys, x, u)
     x_hip     = X(1,:).*ca1;
     z_hip     = X(1,:).*sa1;
     l2        = sqrt((x_hip + sys.df).^2 + z_hip.^2);
-    a2        = acos((sys.df + x_hip)./l2);
+    a2        = atan2(z_hip, (sys.df + x_hip));
     ca2       = cos(a2);
     sa2       = sin(a2);
     contact1  = (X(1,:)<=sys.l0);

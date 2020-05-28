@@ -11,12 +11,12 @@ sys.l0 = 1.05;
 sys.g = 9.81;
 sys.d = 0.2;
 sys.df = 0.5;
-sys.T = 5;
+sys.T = 2;
 sys.dt = 0.001;
 NUM_CTRL = round(sys.T / sys.dt);
 sys.gamma_ = 0.997;
 sys.Q = diag([100, 200, 2, 2, 1000, 10]);
-sys.R = 0.0001*eye(4);
+sys.R = 0.00001*eye(4);
 
 lg = 0.96;
 alpha1g = pi/2 + asin(sys.df/2/lg);
@@ -37,7 +37,7 @@ sys.u0 = [sys.m*sys.g*cos(alpha2g)/sin(alpha1g - alpha2g);
 Op.lims  = sys.lims;
 Op.maxIter = 500;
 Op.gamma_ = sys.gamma_;
-Op.Alpha = [0.1];
+Op.Alpha = [1];
 
 % Define starts
 % com_pos = [0.85, 0.85, 0.9, 0.9, 0.95, 0.95;
@@ -64,10 +64,6 @@ for ii=1:1:size(com_pos, 2)
     end
 end
 
-% alphainit = pi/2 + 0.3;
-% x_starts = [sys.df/2/sin(alphainit - pi/2); alphainit; 0; 0; 0; 0];
-x_starts = sys.goal;
-
 save_dir = "data/";
 save_file = "iLQGBiped2D";
 
@@ -88,8 +84,15 @@ timeJoint = zeros(size(x_starts, 2), 1);
 
 for jj=1:1:size(x_starts, 2)
     dyn_joint = @(x, u, i) biped2d_dyn_first_cst(sys_joint, x, u, sys_joint.full_DDP);
-    % Uinit = zeros(length(sys_joint.U_DIMS_FREE), NUM_CTRL);
-    Uinit = repmat(sys.u0, [1, NUM_CTRL]);
+    
+    l2init = sqrt((sys.df + x_starts(1)*cos(x_starts(2)))^2 + (x_starts(1)*sin(x_starts(2)))^2);
+    alpha2init = acos((sys.df + x_starts(1)*cos(x_starts(2)))/l2init);
+    uinit = [sys.m*sys.g*cos(alpha2init)/sin(x_starts(2) - alpha2init);
+             -sys.m*sys.g*cos(x_starts(2))/sin(x_starts(2) - alpha2init);
+              0;
+              0];
+    Uinit = repmat(uinit, [1, NUM_CTRL]);
+
     tic;
     [XJoint(sys_joint.X_DIMS_FREE,:, jj), ...
      UJoint(:,1:NUM_CTRL, jj), ...
