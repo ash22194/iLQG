@@ -11,10 +11,10 @@ sys.l0 = 1.05;
 sys.g = 9.81;
 sys.d = 0.2;
 sys.df = 0.5;
-sys.T = 2;
+sys.T = 3;
 sys.dt = 0.001;
 NUM_CTRL = round(sys.T / sys.dt);
-sys.gamma_ = 0.997;
+sys.gamma_ = 0.999;
 sys.Q = diag([100, 200, 2, 2, 1000, 10]);
 sys.R = 0.0001*eye(4);
 
@@ -73,13 +73,13 @@ lambda_ = (1 - sys.gamma_)/sys.dt;
 Op.lims  = sys.lims;
 Op.maxIter = 500;
 Op.gamma_ = sys.gamma_;
-Op.Alpha = [1];
+% Op.Alpha = [1];
 
 % Define starts
 % com_pos = [0.85, 0.85, 0.9, 0.9, 0.95, 0.95;
 %             0.1,  0.4, 0.1, 0.4,  0.1,  0.4];
 com_pos = [0.92, 0.92, 1.0, 1.0;
-           0.1,  0.4, 0.1, 0.4];
+           0.5,  0.4, 0.5, 0.4];
 com_pos(2,:) = pi/2 + com_pos(2,:);
 com_vel = [ 0.1, -0.1, 0.1, -0.1;
            -0.3, -0.3, -0.4, -0.4];
@@ -115,6 +115,9 @@ Ops.lims = sys_joint.lims;
 XJoint = zeros(4, NUM_CTRL+1, size(x_starts, 2));
 UJoint = zeros(length(sys_joint.U_DIMS_FREE), NUM_CTRL+1, size(x_starts, 2));
 KJoint = zeros(length(sys_joint.U_DIMS_FREE), 4, NUM_CTRL+1, size(x_starts, 2));
+Xinit = nan(6, NUM_CTRL+1, size(x_starts, 2));
+Uinit = nan(4, NUM_CTRL+1, size(x_starts, 2));
+Costinit = zeros(size(x_starts, 2), 1);
 TraceJoint = cell(size(x_starts, 2), 1);
 timeJoint = zeros(size(x_starts, 2), 1);
 
@@ -128,14 +131,35 @@ for jj=1:1:size(x_starts, 2)
 %               0;
 %               0];
 %     Uinit = repmat(uinit, [1, NUM_CTRL]);
-    [~, Xinit] = ode45(@(t,x) f_Biped2DFirst(sys_joint, x, sys.u0 - K_joint*(x - sys.goal)), ...
-                       linspace(0, sys.T, NUM_CTRL+1), x_starts(:,jj));
-    Xinit = Xinit';
-    Uinit = sys.u0 - K_joint*(Xinit - sys.goal);
-    discount = sys.gamma_.^linspace(0, NUM_CTRL, NUM_CTRL+1);
-    Costinit = discount.*(diag(Xinit'*sys.Q*Xinit) + diag(Uinit'*sys.R*Uinit));
-    Op.cost = Costinit;
+    Xinit(:,1, jj) = x_starts(:,jj);
+    discount = 1;
+    for ii=1:1:NUM_CTRL
+        Uinit(:,ii, jj) = min(max(sys_joint.u0 - K_joint*(Xinit(:,ii, jj) - sys_joint.goal), sys_joint.lims(:,1)), sys_joint.lims(:,2));
+        Xinit(:,ii+1, jj) = f_Biped2DFirst_finite(sys_joint, Xinit(:,ii, jj), Uinit(:,ii, jj), sys_joint.dt);
+        Costinit(jj) = Costinit(jj) + discount*l_Biped2DFirst(sys_joint, Xinit(:,ii, jj), Uinit(:,ii, jj))*sys_joint.dt;
+        discount = discount*sys_joint.gamma_;
+    end
+    Costinit(jj) = Costinit(jj) + discount*l_Biped2DFirst(sys_joint, Xinit(:,NUM_CTRL+1, jj), zeros(4,1))*sys_joint.dt;
+%     figure;
+%     subplot(4,1,1);
+%     x_coord = Xinit(1,:).*cos(Xinit(2,:));
+%     z_coord = Xinit(1,:).*sin(Xinit(2,:));
+%     plot(x_coord, z_coord); xlabel('x'); ylabel('z');
+%     subplot(4,1,2);
+%     plot(x_coord, Xinit(3,:)); xlabel('x'); ylabel('x-dot');
+%     subplot(4,1,3);
+%     plot(z_coord, Xinit(4,:)); xlabel('z'); ylabel('z-dot');
+%     subplot(4,1,4);
+%     plot(Xinit(5,:), Xinit(6,:)); xlabel('theta'); ylabel('theta-dot');
     
+%     [~, Xinit] = ode45(@(t,x) f_Biped2DFirst(sys_joint, x, sys.u0 - K_joint*(x - sys.goal)), ...
+%                        linspace(0, sys.T, NUM_CTRL+1), x_starts(:,jj));
+%     Xinit = Xinit';
+%     Uinit = sys.u0 - K_joint*(Xinit - sys.goal);
+%     discount = sys.gamma_.^linspace(0, NUM_CTRL, NUM_CTRL+1);
+%     Costinit = discount.*(diag(Xinit'*sys.Q*Xinit) + diag(Uinit'*sys.R*Uinit));
+    
+    Op.cost = Costinit;
     tic;
     [XJoint(sys_joint.X_DIMS_FREE,:, jj), ...
      UJoint(:,1:NUM_CTRL, jj), ...
