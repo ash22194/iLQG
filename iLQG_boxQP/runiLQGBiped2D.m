@@ -11,12 +11,12 @@ sys.l0 = 1.05;
 sys.g = 9.81;
 sys.d = 0.2;
 sys.df = 0.5;
-sys.T = 3;
+sys.T = 4;
 sys.dt = 0.001;
 NUM_CTRL = round(sys.T / sys.dt);
 sys.gamma_ = 0.999;
 sys.Q = diag([100, 200, 2, 2, 1000, 10]);
-sys.R = 0.0001*eye(4);
+sys.R = 0.000002*eye(4);
 
 lg = 0.96;
 alpha1g = pi/2 + asin(sys.df/2/lg);
@@ -24,10 +24,10 @@ l2g = sqrt((sys.df + lg*cos(alpha1g))^2 + (lg*sin(alpha1g))^2);
 alpha2g = acos((sys.df + lg*cos(alpha1g))/l2g);
 sys.goal = [lg; alpha1g; 0; 0; 0; 0];
 sys.l_point = sys.goal;
-sys.lims = [0, 1.5*sys.m*sys.g;
-            0, 1.5*sys.m*sys.g;
-            -0.125*sys.m*sys.g, 0.125*sys.m*sys.g;
-            -0.125*sys.m*sys.g, 0.125*sys.m*sys.g];
+sys.lims = 2*[0, 1.5*sys.m*sys.g;
+              0, 1.5*sys.m*sys.g;
+              -0.125*sys.m*sys.g, 0.125*sys.m*sys.g;
+              -0.125*sys.m*sys.g, 0.125*sys.m*sys.g];
 sys.u0 = [sys.m*sys.g*cos(alpha2g)/sin(alpha1g - alpha2g);
           -sys.m*sys.g*cos(alpha1g)/sin(alpha1g - alpha2g);
           0;
@@ -79,11 +79,11 @@ Op.gamma_ = sys.gamma_;
 % com_pos = [0.85, 0.85, 0.9, 0.9, 0.95, 0.95;
 %             0.1,  0.4, 0.1, 0.4,  0.1,  0.4];
 com_pos = [0.92, 0.92, 1.0, 1.0;
-           0.5,  0.4, 0.5, 0.4];
+           0.4,  0.3, 0.4, 0.3];
 com_pos(2,:) = pi/2 + com_pos(2,:);
 com_vel = [ 0.1, -0.1, 0.1, -0.1;
            -0.3, -0.3, -0.4, -0.4];
-theta_starts = [-0.3,  -0.15, 0.15, 0.3;
+theta_starts = [-0.4,  -0.25, 0.25, 0.4;
                    0,      0,    0,   0];
 
 x_starts   = nan(6, size(com_pos,2)*size(com_vel,2)*size(theta_starts,2));
@@ -99,6 +99,9 @@ for ii=1:1:size(com_pos, 2)
         end
     end
 end
+
+% hard_cases = [8    16    36    40    44    48];
+% x_starts = x_starts(:, hard_cases);
 
 save_dir = "data/";
 save_file = "iLQGBiped2D";
@@ -164,8 +167,8 @@ for jj=1:1:size(x_starts, 2)
     [XJoint(sys_joint.X_DIMS_FREE,:, jj), ...
      UJoint(:,1:NUM_CTRL, jj), ...
      KJoint(:,sys_joint.X_DIMS_FREE,1:NUM_CTRL, jj), TraceJoint{jj,1}] = iLQG(dyn_joint, ...
-                                                    Xinit, ... % x_starts(sys_joint.X_DIMS_FREE, jj), ...
-                                                    Uinit(:,1:NUM_CTRL), Op);
+                                                    Xinit(:,:,jj), ... % x_starts(sys_joint.X_DIMS_FREE, jj), ...
+                                                    Uinit(:,1:NUM_CTRL,jj), Op);
     timeJoint(jj) = toc;
     XJoint(sys_joint.X_DIMS_FIXED,:, jj) = repmat(sys_joint.l_point(sys_joint.X_DIMS_FIXED), [1, size(XJoint,2)]);
     jj
