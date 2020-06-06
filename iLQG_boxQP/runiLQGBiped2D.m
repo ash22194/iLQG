@@ -100,9 +100,6 @@ for ii=1:1:size(com_pos, 2)
     end
 end
 
-% hard_cases = [8    16    36    40    44    48];
-% x_starts = x_starts(:, hard_cases);
-
 save_dir = "data/";
 save_file = "iLQGBiped2D";
 

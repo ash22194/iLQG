@@ -4,9 +4,9 @@ close all;
 
 %%
 addpath('cartpole');
-iLQG_dir = 'data/';
-iLQG_filenames = ["iLQGCartPoleDecomposed_diffR_closerstarts_gamma_0.997mc=5,mp=1.mat";
-                  "iLQGCartPoleDecomposed_diffR_furthercloserstarts_gamma_0.997mc=5,mp=1.mat";
+iLQG_dir = "data/";
+iLQG_filenames = [%"iLQGCartPoleDecomposed_diffR_closerstarts_gamma_0.997mc=0.2,mp=1.mat";
+ "iLQGCartPoleDecomposed_diffR_furthercloserstarts_fineralpha_gamma_0.997mc=0.2,mp=1.mat";
                   ];
 x_starts = [];
 
@@ -135,8 +135,8 @@ KPoleTClose = KPoleTClose(:,:,:, ia_x_starts);
 KCartTClose = KCartTClose(:,:,:, ia_x_starts);
 KPoleFClose = KPoleFClose(:,:,:, ia_x_starts);
 
-DP_dir = 'data/';
-DP_filename = 'mc=5,mp=1_densegrid_gamma_0.997.mat';
+DP_dir = "../../cartPoleBak/data/policies/continuousa_nowraparound/";
+DP_filename = "mc=0.2,mp=1_densegrid_gamma_0.997.mat";
 
 load(strcat(DP_dir, DP_filename), 'V_joint', 'policy_joint', ...
                                   'V_t_pole_second', 'f_cart_first_', 't_pole_second', ...
@@ -517,6 +517,8 @@ function [trajX, trajU, J, J_WrapAround] = rolloutDPTraj(policy, x_starts, sys, 
     trajU = nan(2, NUM_CTRL, size(x_starts, 2));
     J = zeros(size(x_starts, 2), 1);
     J_WrapAround = zeros(size(x_starts, 2), 1);
+    P1 = griddedInterpolant(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,1));
+    P2 = griddedInterpolant(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,2));
     
     for jj = 1:1:size(x_starts, 2)
         trajX(:, 1, jj) = x_starts(: ,jj);
@@ -526,10 +528,8 @@ function [trajX, trajU, J, J_WrapAround] = rolloutDPTraj(policy, x_starts, sys, 
                   min(limits(3, 2), max(limits(3, 1), trajX(3, :, jj)));
                   min(limits(4, 2), max(limits(4, 1), trajX(4, ii, jj)))];
             
-            trajU(1, ii, jj) = interpn(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,1), ...
-                                       x_(1),  x_(2),  x_(3),  x_(4));
-            trajU(2, ii, jj) = interpn(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,2), ...
-                                       x_(1),  x_(2),  x_(3),  x_(4));
+            trajU(1, ii, jj) = P1(x_(1),  x_(2),  x_(3),  x_(4));
+            trajU(2, ii, jj) = P2(x_(1),  x_(2),  x_(3),  x_(4));
             [trajX(:, ii+1, jj),~] = sys.dynamics_discrete(trajX(:, ii, jj), trajU(:, ii, jj));
         end
         J_WrapAround(jj, 1) = J_CartPole_WrapAround(sys, trajX(:,:, jj), trajU(:,:, jj));
@@ -546,19 +546,19 @@ function [trajX, trajU, J, J_WrapAround] = rolloutDPTrajOde(policy, x_starts, sy
     trajU = nan(2, NUM_CTRL, size(x_starts, 2));
     J_WrapAround = zeros(size(x_starts, 2), 1);
     J = zeros(size(x_starts, 2), 1);
+    P1 = griddedInterpolant(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,1));
+    P2 = griddedInterpolant(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,2));
     
     for jj = 1:1:size(x_starts, 2)
-        [~, X] = ode113(@(t,y) cartpole_dyn_gridbased(t, y, policy, grid_x, grid_x_dot, grid_xP, grid_xP_dot, limits, sys), tspan, x_starts(:, jj), opts);
+        [~, X] = ode113(@(t,y) cartpole_dyn_gridbased(t, y, P1, P2, limits, sys), tspan, x_starts(:, jj), opts);
         trajX(:,:, jj) = X';
         X_ = [min(limits(1, 2), max(limits(1, 1), trajX(1, :, jj)));
               min(limits(2, 2), max(limits(2, 1), trajX(2, :, jj)));
               min(limits(3, 2), max(limits(3, 1), trajX(3, :, jj)));
               min(limits(4, 2), max(limits(4, 1), trajX(4, :, jj)))];
         
-        trajU(1, :, jj) = interpn(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,1), ...
-                                  X_(1,1:(end-1)), X_(2,1:(end-1)), X_(3,1:(end-1)), X_(4,1:(end-1)));
-        trajU(2, :, jj) = interpn(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,2), ...
-                                  X_(1,1:(end-1)), X_(2,1:(end-1)), X_(3,1:(end-1)), X_(4,1:(end-1)));
+        trajU(1, :, jj) = P1(X_(1,1:(end-1)), X_(2,1:(end-1)), X_(3,1:(end-1)), X_(4,1:(end-1)));
+        trajU(2, :, jj) = P2(X_(1,1:(end-1)), X_(2,1:(end-1)), X_(3,1:(end-1)), X_(4,1:(end-1)));
         J_WrapAround(jj, 1) = J_CartPole_WrapAround(sys, trajX(:,:, jj), trajU(:,:, jj));
         J(jj, 1) = J_CartPole(sys, trajX(:,:, jj), trajU(:,:, jj));
         disp(strcat('start : ', num2str(jj)));

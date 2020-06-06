@@ -3,17 +3,22 @@ function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = cartpole_dyn_first_wraparou
     final = isnan(u(1,:));
     u(:,final) = 0;
     if (nargout == 2)
-        f = f_CartPoleFirst_WrapAround_finite(sys, x, u, sys.dt);
+        % f = f_CartPoleFirst_WrapAround_finite(sys, x, u, sys.dt);
+        f = f_CartPoleFirst_finite(sys, x, u, sys.dt);
         c = l_CartPoleFirst_WrapAround(sys, x, u) * sys.dt;
     else
         
         f = [];
-        X_DIMS_FREE = sys.X_DIMS_FREE;
-        xu_dyn  = @(xu) f_CartPoleFirst_WrapAround_finite(sys, xu(1:length(X_DIMS_FREE),:), ...
-                                                               xu((1+length(X_DIMS_FREE)):end,:), sys.dt);
-        J       = finite_difference(xu_dyn, [x; u]);
-        fx      = J(:,1:length(X_DIMS_FREE),:);
-        fu      = J(:,(1+length(X_DIMS_FREE)):end,:);
+        %X_DIMS_FREE = sys.X_DIMS_FREE;
+        %xu_dyn  = @(xu) f_CartPoleFirst_WrapAround_finite(sys, xu(1:length(X_DIMS_FREE),:), ...
+        %                                                       xu((1+length(X_DIMS_FREE)):end,:), sys.dt);
+        %J       = finite_difference(xu_dyn, [x; u]);
+        %fx      = J(:,1:length(X_DIMS_FREE),:);
+        %fu      = J(:,(1+length(X_DIMS_FREE)):end,:);
+        
+        X_DIM = size(x, 1);
+        fx = repmat(eye(X_DIM), [1,1,size(x,2)]) + fx_CartPoleFirst(sys, x, u) * sys.dt;
+        fu = fu_CartPoleFirst(sys, x, u) * sys.dt;
         if (full_DDP)
             [fxx,fxu,fuu] = deal([]);
         else
