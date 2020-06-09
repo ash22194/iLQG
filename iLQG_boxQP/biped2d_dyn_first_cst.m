@@ -1,10 +1,11 @@
 function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = biped2d_dyn_first_cst(sys, x, u, full_DDP)
-
+    
+    u0 = sys.u0(sys.U_DIMS_FREE,1);
     final = isnan(u(1,:));
-    u(:,final) = repmat(sys.u0, [1, sum(final)]);
+    u(:,final) = repmat(u0, [1, sum(final)]);
     if (nargout == 2)
         f = f_Biped2DFirst_finite(sys, x, u, sys.dt);
-        c = l_Biped2DFirst(sys, x, u - sys.u0) * sys.dt;
+        c = l_Biped2DFirst(sys, x, u - u0) * sys.dt;
         
     else
 
@@ -19,10 +20,10 @@ function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = biped2d_dyn_first_cst(sys, 
         end
 
         c = [];
-        cx = dldx_Biped2DFirst(sys, x, u - sys.u0) * sys.dt;
-        cu = dldu_Biped2DFirst(sys, x, u - sys.u0) * sys.dt;
-        cxx = ddldx_Biped2DFirst(sys, x, u - sys.u0) * sys.dt;
-        cuu = ddldu_Biped2DFirst(sys, x, u - sys.u0) * sys.dt;
-        cxu = permute(ddldudx_Biped2DFirst(sys, x, u - sys.u0), [2, 1, 3]) * sys.dt;
+        cx = dldx_Biped2DFirst(sys, x, u - u0) * sys.dt;
+        cu = dldu_Biped2DFirst(sys, x, u - u0) * sys.dt;
+        cxx = ddldx_Biped2DFirst(sys, x, u - u0) * sys.dt;
+        cuu = ddldu_Biped2DFirst(sys, x, u - u0) * sys.dt;
+        cxu = permute(ddldudx_Biped2DFirst(sys, x, u - u0), [2, 1, 3]) * sys.dt;
     end
 end
