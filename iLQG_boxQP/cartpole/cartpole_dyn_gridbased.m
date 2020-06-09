@@ -1,4 +1,4 @@
-function dx = cartpole_dyn_gridbased(t, x, policy, grid_x, grid_x_dot, grid_xP, grid_xP_dot, limits, sys)
+function dx = cartpole_dyn_gridbased(t, x, policyF, policyT, limits, sys)
     
     x_ = [min(limits(1, 2), max(limits(1, 1), x(1)));
           min(limits(2, 2), max(limits(2, 1), x(2)));
@@ -6,8 +6,8 @@ function dx = cartpole_dyn_gridbased(t, x, policy, grid_x, grid_x_dot, grid_xP, 
           min(limits(4, 2), max(limits(4, 1), x(4)))];
     
 
-    u_pole = interpn(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,2), x_(1), x_(2), x_(3), x_(4));
-    u_cart = interpn(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,1), x_(1), x_(2), x_(3), x_(4));
+    u_pole = policyT(x_(1), x_(2), x_(3), x_(4));
+    u_cart = policyF(x_(1), x_(2), x_(3), x_(4));
 
     dx = zeros(4,1);
     dx(1) = x(2);
