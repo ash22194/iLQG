@@ -2,6 +2,7 @@ clear;
 clc;
 close all;
 addpath('cartpole');
+addpath('iLQG utilities/kdtree/kdtree/lib');
 
 %% Common parameters
 sys.full_DDP = false;   
@@ -27,22 +28,22 @@ sys.lims = [-9, 9;
 Op.lims  = sys.lims;
 Op.maxIter = 200;
 Op.gamma_ = sys.gamma_;
-Op.Alpha = [1];
+Op.Alpha = [0.5];
 
 % Define starts
 %cart_starts = [-1, -0.5, 0, 0.5, 1;
 %                0,  0,   0, 0,   0];
 %cart_starts = [-0.75, -0.5, 0, 0.5, 0.75;
 %                0,     0,   0, 0,   0];
-cart_starts = [-0.4, -0.2, 0, 0.2, 0.4;
-                0,     0,   0, 0,   0];
+cart_starts = [-0.4, -0.2, 0.2, 0.4;
+                0,     0,   0,   0];
 
 %pole_starts = [7*pi/4, 5*pi/4, 3*pi/4, pi/4, 0;
 %               0,      0,      0,      0,    0];
 %pole_starts = [pi/2, 2*pi/3, 5*pi/6, 7*pi/6, 4*pi/3, 3*pi/2;
 %               0,      0,      0,      0,    0,      0];
-pole_starts = [2*pi/3, 3*pi/4, 5*pi/6, 7*pi/6, 5*pi/4, 4*pi/3;
-               0,      0,      0,      0,    0,      0];
+pole_starts = [2*pi/3, 3*pi/4, 5*pi/4, 4*pi/3;
+               0,      0,      0,      0];
 
 x_starts = nan(4, size(cart_starts,2)*size(pole_starts,2));
 for ii=1:1:size(cart_starts, 2)
@@ -51,7 +52,6 @@ for ii=1:1:size(cart_starts, 2)
     end
 end
 
-x_starts = [0; 0; 0; 0];
 
 %% Cascaded
 
@@ -68,7 +68,7 @@ for kk=1:3
     C = nchoosek(X_DIMS, kk);
     for ii=1:1:size(C,1)
         sysFF_ = sys;
-        sysFF_.X_DIMS_FREE = C(ii,:);
+        sysFF_.X_DIMS_FREE = C(ii,:)';
         sysFF_.X_DIMS_FIXED = X_DIMS;
         sysFF_.X_DIMS_FIXED(sysFF_.X_DIMS_FREE) = [];
         sysFF_.U_DIMS_FREE = [1];
@@ -123,9 +123,9 @@ for kk=1:3
             [sysTS_.Xn(:,:, jj), ...
              sysTS_.Un(:,1:NUM_CTRL, jj), ...
              sysTS_.Kn(:,:,1:NUM_CTRL, jj), ...
+             sysTS_.UFC(:,:, jj), ...
+             sysTS_.KFC(:,:,:, jj), ...
              sysTS_.XFC(:,:, jj), ...
-             sysTS_.UFC(:,:,:, jj), ...
-             sysTS_.KFC(:,:, jj), ...
              ~, ~, sysTS_.Cn(:,:, jj)] = iLQGSecondKDTree(dynTS, ...
                                                 x_starts(:, jj), ...
                                                 zeros(length(sysTS_.U_DIMS_FREE), NUM_CTRL), ...
@@ -151,7 +151,7 @@ for kk=1:3
     C = nchoosek(X_DIMS, kk);
     for ii=1:1:size(C,1)
         sysTF_ = sys;
-        sysTF_.X_DIMS_FREE = C(ii,:);
+        sysTF_.X_DIMS_FREE = C(ii,:)';
         sysTF_.X_DIMS_FIXED = X_DIMS;
         sysTF_.X_DIMS_FIXED(sysTF_.X_DIMS_FREE) = [];
         sysTF_.U_DIMS_FREE = [2];
@@ -206,9 +206,9 @@ for kk=1:3
             [sysFS_.Xn(:,:, jj), ...
              sysFS_.Un(:,1:NUM_CTRL, jj), ...
              sysFS_.Kn(:,:,1:NUM_CTRL, jj), ...
+             sysFS_.UFC(:,:, jj), ...
+             sysFS_.KFC(:,:,:, jj), ...
              sysFS_.XFC(:,:, jj), ...
-             sysFS_.UFC(:,:,:, jj), ...
-             sysFS_.KFC(:,:, jj), ...
              ~, ~, sysFS_.Cn(:,:, jj)] = iLQGSecondKDTree(dynFS, ...
                                                 x_starts(:, jj), ...
                                                 zeros(length(sysFS_.U_DIMS_FREE), NUM_CTRL), ...
@@ -223,3 +223,5 @@ for kk=1:3
     end
     numCompleted = numCompleted + size(C, 1);
 end
+
+save(strcat('data/iLQGCartPoleAllPossibleDecomposed_diffR_furthercloserstarts_alpha_',num2str(Op.Alpha),'_gamma_',num2str(sys.gamma_),'mc=',num2str(sys.mc),',mp=',num2str(sys.mp),'.mat'));
