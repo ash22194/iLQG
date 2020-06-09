@@ -11,12 +11,12 @@ sys.l0 = 1.05;
 sys.g = 9.81;
 sys.d = 0.2;
 sys.df = 0.5;
-sys.T = 3;
+sys.T = 4;
 sys.dt = 0.001;
 NUM_CTRL = round(sys.T / sys.dt);
 sys.gamma_ = 0.999;
 sys.Q = diag([100, 200, 2, 2, 1000, 10]);
-sys.R = 0.0001*eye(4);
+sys.R = 0.000002*eye(4);
 
 lg = 0.96;
 alpha1g = pi/2 + asin(sys.df/2/lg);
@@ -28,6 +28,7 @@ sys.lims = [0, 1.5*sys.m*sys.g;
             0, 1.5*sys.m*sys.g;
             -0.125*sys.m*sys.g, 0.125*sys.m*sys.g;
             -0.125*sys.m*sys.g, 0.125*sys.m*sys.g];
+sys.lims(:,:) = 2*sys.lims(:,:);
 sys.u0 = [sys.m*sys.g*cos(alpha2g)/sin(alpha1g - alpha2g);
           -sys.m*sys.g*cos(alpha1g)/sin(alpha1g - alpha2g);
           0;
@@ -79,11 +80,11 @@ Op.gamma_ = sys.gamma_;
 % com_pos = [0.85, 0.85, 0.9, 0.9, 0.95, 0.95;
 %             0.1,  0.4, 0.1, 0.4,  0.1,  0.4];
 com_pos = [0.92, 0.92, 1.0, 1.0;
-           0.5,  0.4, 0.5, 0.4];
+           0.4,  0.3, 0.4, 0.3];
 com_pos(2,:) = pi/2 + com_pos(2,:);
 com_vel = [ 0.1, -0.1, 0.1, -0.1;
            -0.3, -0.3, -0.4, -0.4];
-theta_starts = [-0.3,  -0.15, 0.15, 0.3;
+theta_starts = [-0.4,  -0.25, 0.25, 0.4;
                    0,      0,    0,   0];
 
 x_starts   = nan(6, size(com_pos,2)*size(com_vel,2)*size(theta_starts,2));
@@ -99,6 +100,11 @@ for ii=1:1:size(com_pos, 2)
         end
     end
 end
+
+% hard_cases = [7     8    15    16    36    39    40    44    47    48    56    64];
+% hard_cases = [12    19    20    23    24    27    28    31    32    35    38    43    46    51    52    55    59    60    63];
+hard_cases = [40 48];
+x_starts = x_starts(:, hard_cases);
 
 save_dir = "data/";
 save_file = "iLQGBiped2D";
@@ -140,17 +146,17 @@ for jj=1:1:size(x_starts, 2)
         discount = discount*sys_joint.gamma_;
     end
     Costinit(jj) = Costinit(jj) + discount*l_Biped2DFirst(sys_joint, Xinit(:,NUM_CTRL+1, jj), zeros(4,1))*sys_joint.dt;
-%     figure;
-%     subplot(4,1,1);
-%     x_coord = Xinit(1,:).*cos(Xinit(2,:));
-%     z_coord = Xinit(1,:).*sin(Xinit(2,:));
-%     plot(x_coord, z_coord); xlabel('x'); ylabel('z');
-%     subplot(4,1,2);
-%     plot(x_coord, Xinit(3,:)); xlabel('x'); ylabel('x-dot');
-%     subplot(4,1,3);
-%     plot(z_coord, Xinit(4,:)); xlabel('z'); ylabel('z-dot');
-%     subplot(4,1,4);
-%     plot(Xinit(5,:), Xinit(6,:)); xlabel('theta'); ylabel('theta-dot');
+    figure;
+    subplot(4,1,1);
+    x_coord = Xinit(1,:,jj).*cos(Xinit(2,:,jj));
+    z_coord = Xinit(1,:,jj).*sin(Xinit(2,:,jj));
+    plot(x_coord, z_coord); xlabel('x'); ylabel('z');
+    subplot(4,1,2);
+    plot(x_coord, Xinit(3,:,jj)); xlabel('x'); ylabel('x-dot');
+    subplot(4,1,3);
+    plot(z_coord, Xinit(4,:,jj)); xlabel('z'); ylabel('z-dot');
+    subplot(4,1,4);
+    plot(Xinit(5,:,jj), Xinit(6,:,jj)); xlabel('theta'); ylabel('theta-dot');
     
 %     [~, Xinit] = ode45(@(t,x) f_Biped2DFirst(sys_joint, x, sys.u0 - K_joint*(x - sys.goal)), ...
 %                        linspace(0, sys.T, NUM_CTRL+1), x_starts(:,jj));
@@ -164,8 +170,8 @@ for jj=1:1:size(x_starts, 2)
     [XJoint(sys_joint.X_DIMS_FREE,:, jj), ...
      UJoint(:,1:NUM_CTRL, jj), ...
      KJoint(:,sys_joint.X_DIMS_FREE,1:NUM_CTRL, jj), TraceJoint{jj,1}] = iLQG(dyn_joint, ...
-                                                    Xinit, ... % x_starts(sys_joint.X_DIMS_FREE, jj), ...
-                                                    Uinit(:,1:NUM_CTRL), Op);
+                                                    Xinit(:,:, jj), ... % x_starts(sys_joint.X_DIMS_FREE, jj), ...
+                                                    Uinit(:,1:NUM_CTRL, jj), Op);
     timeJoint(jj) = toc;
     XJoint(sys_joint.X_DIMS_FIXED,:, jj) = repmat(sys_joint.l_point(sys_joint.X_DIMS_FIXED), [1, size(XJoint,2)]);
     jj
