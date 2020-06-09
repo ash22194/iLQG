@@ -6,7 +6,7 @@ close all;
 addpath('cartpole');
 iLQG_dir = 'data/';
 iLQG_filenames = [%"iLQGCartPoleDecomposed_diffR_closerstarts_fineralpha_gamma_0.997mc=1,mp=1.mat";
-                  "iLQGCartPoleDecomposed_diffR_difffurthercloserstarts_finestalpha_gamma_0.997mc=1,mp=1_1.mat";
+                  "iLQGCartPoleDecomposedOnlyCostWrapAround_diffR_difffurthercloserstarts_lowlimits_alpha_0.2_mc=5,mp=1.mat";
                   ];
 x_starts = [];
 
@@ -140,7 +140,7 @@ KCartTClose = KCartTClose(:,:,:, ia_x_starts);
 KPoleFClose = KPoleFClose(:,:,:, ia_x_starts);
 
 DP_dir = 'data/';
-DP_filename = 'mc=1,mp=1_densegrid_gamma_0.997.mat';
+DP_filename = 'mc=5,mp=1_densegrid_wraparound_gamma_0.997lowlimits.mat';
 
 load(strcat(DP_dir, DP_filename), 'V_joint', 'policy_joint', ...
                                   'V_t_pole_second', 'f_cart_first_', 't_pole_second', ...
@@ -161,7 +161,7 @@ convergence_tol = 5e-2;
 disp('DDP');
 for jj=1:1:size(x_starts, 2)
     
-    J_DDP(jj, 1)         = J_CartPole(sys, XJoint(:,:, jj), UJoint(:,:, jj));
+    J_DDP(jj, 1)         = J_CartPole_WrapAround(sys, XJoint(:,:, jj), UJoint(:,:, jj));
     J_DDP_final(jj, 1)   = sum(CJoint(1,:, jj), 2);
     lastState            = XJoint(:, end, jj);
     lastState(3)         = mod(lastState(3), 2*pi);
@@ -169,7 +169,7 @@ for jj=1:1:size(x_starts, 2)
     
     sys.U_DIMS_FREE      = [2];
     sys.U_DIMS_FIXED     = [1];
-    cost                 = l_CartPoleSecond(sys, XPoleTS(:,:, jj), UPoleTS(:,:, jj), ...
+    cost                 = l_CartPoleSecond_WrapAround(sys, XPoleTS(:,:, jj), UPoleTS(:,:, jj), ...
                                               UCartFClose(:,:, jj), KCartFClose(:,:,:, jj), XCartFClose(:,:, jj));
     discount             = sys.gamma_.^linspace(0, length(cost)-1, length(cost));
     J_DDP(jj, 2)         = sum(cost.*discount*sys.dt, 2);
@@ -180,7 +180,7 @@ for jj=1:1:size(x_starts, 2)
     
     sys.U_DIMS_FREE      = [1];
     sys.U_DIMS_FIXED     = [2];
-    cost                 = l_CartPoleSecond(sys, XCartFS(:,:, jj), UCartFS(:,:, jj), ...
+    cost                 = l_CartPoleSecond_WrapAround(sys, XCartFS(:,:, jj), UCartFS(:,:, jj), ...
                                               UPoleTClose(:,:, jj), KPoleTClose(:,:,:, jj), XPoleTClose(:,:, jj));
     discount             = sys.gamma_.^linspace(0, length(cost)-1, length(cost));
     J_DDP(jj, 3)         = sum(cost.*discount*sys.dt, 2);
@@ -191,7 +191,7 @@ for jj=1:1:size(x_starts, 2)
     
     sys.U_DIMS_FREE      = [1];
     sys.U_DIMS_FIXED     = [2];
-    cost                 = l_CartPoleSecond(sys, XPoleFS(:,:, jj), UPoleFS(:,:, jj), ...
+    cost                 = l_CartPoleSecond_WrapAround(sys, XPoleFS(:,:, jj), UPoleFS(:,:, jj), ...
                                               UCartTClose(:,:, jj), KCartTClose(:,:,:, jj), XCartTClose(:,:, jj));
     discount             = sys.gamma_.^linspace(0, length(cost)-1, length(cost));
     J_DDP(jj, 4)         = sum(cost.*discount*sys.dt, 2);
@@ -202,7 +202,7 @@ for jj=1:1:size(x_starts, 2)
     
     sys.U_DIMS_FREE      = [2];
     sys.U_DIMS_FIXED     = [1];
-    cost                 = l_CartPoleSecond(sys, XCartTS(:,:, jj), UCartTS(:,:, jj), ...
+    cost                 = l_CartPoleSecond_WrapAround(sys, XCartTS(:,:, jj), UCartTS(:,:, jj), ...
                                               UPoleFClose(:,:, jj), KPoleFClose(:,:,:, jj), XPoleFClose(:,:, jj));
     discount             = sys.gamma_.^linspace(0, length(cost)-1, length(cost));
     J_DDP(jj, 5)         = sum(cost.*discount*sys.dt, 2);
@@ -211,12 +211,12 @@ for jj=1:1:size(x_starts, 2)
     lastState(3)         = mod(lastState(3), 2*pi);
     DDP_finalerr(jj, 5)  = (norm(lastState - sys.goal));
     
-    J_DDP(jj, 6)         = J_CartPole(sys, XCartFPoleTDec(:,:, jj), UCartFPoleTDec(:,:, jj));
+    J_DDP(jj, 6)         = J_CartPole_WrapAround(sys, XCartFPoleTDec(:,:, jj), UCartFPoleTDec(:,:, jj));
     lastState            = XCartFPoleTDec(:, end, jj);
     lastState(3)         = mod(lastState(3), 2*pi);
     DDP_finalerr(jj, 6)  = (norm(lastState - sys.goal));
     
-    J_DDP(jj, 7)         = J_CartPole(sys, XCartTPoleFDec(:,:, jj), UCartTPoleFDec(:,:, jj));
+    J_DDP(jj, 7)         = J_CartPole_WrapAround(sys, XCartTPoleFDec(:,:, jj), UCartTPoleFDec(:,:, jj));
     lastState            = XCartTPoleFDec(:, end, jj);
     lastState(3)         = mod(lastState(3), 2*pi);
     DDP_finalerr(jj, 7)  = (norm(lastState - sys.goal));
@@ -230,6 +230,7 @@ sys.U_DIMS_FREE = [1;2];
 sys.U_DIMS_FIXED = [];
 sys.X_DIMS_FREE = [1;2;3;4];
 sys.X_DIMS_FIXED = [];
+sys.dynamics_discrete = @(x, u) cartpole_dyn_first_cst(sys, x, u, sys.full_DDP);
 limits = [x_limits; x_dot_limits; xP_limits; xP_dot_limits];
 
 J_DP_rollout = nan(size(x_starts, 2), 7);
@@ -243,10 +244,12 @@ NUM_STEPS_LONGHORZ = round(T_longhorz / sys.dt);
 
 disp('Joint');
 [trajXJoint, trajUJoint, J_DP_rollout(:,1)] = rolloutDPTrajOde(policy_joint, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T);
+trajXJoint(3, end, :) = mod(trajXJoint(3, end, :), 2*pi);
 trajXJointErr = trajXJoint(:, end, :) - sys.goal;
 DP_finalerr(:, 1) = reshape(vecnorm(trajXJointErr), size(x_starts,2), 1);
 
 [trajXJoint, trajUJoint, J_DP_longhorz_rollout(:,1)] = rolloutDPTrajOde(policy_joint, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T_longhorz);
+trajXJoint(3, end, :) = mod(trajXJoint(3, end, :), 2*pi);
 trajXJointErr = trajXJoint(:, end, :) - sys.goal;
 DP_longhorz_finalerr(:, 1) = reshape(vecnorm(trajXJointErr), size(x_starts,2), 1);
 
@@ -255,10 +258,12 @@ policyCartFPoleT(:,:,:,:,1) = f_cart_first_;
 policyCartFPoleT(:,:,:,:,2) = t_pole_second;
 
 [trajXCFPT, trajUCFPT, J_DP_rollout(:,2)] = rolloutDPTrajOde(policyCartFPoleT, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T);
+trajXCFPT(3, end, :) = mod(trajXCFPT(3, end, :), 2*pi);
 trajXCFPTErr = trajXCFPT(:, end, :) - sys.goal;
 DP_finalerr(:, 2) = reshape(vecnorm(trajXCFPTErr), size(x_starts,2), 1);
 
 [trajXCFPT, trajUCFPT, J_DP_longhorz_rollout(:,2)] = rolloutDPTrajOde(policyCartFPoleT, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T_longhorz);
+trajXCFPT(3, end, :) = mod(trajXCFPT(3, end, :), 2*pi);
 trajXCFPTErr = trajXCFPT(:, end, :) - sys.goal;
 DP_longhorz_finalerr(:, 2) = reshape(vecnorm(trajXCFPTErr), size(x_starts,2), 1);
 
@@ -267,10 +272,12 @@ policyPoleTCartF(:,:,:,:,2) = t_pole_first_;
 policyPoleTCartF(:,:,:,:,1) = f_cart_second;
 
 [trajXPTCF, trajUPTCF, J_DP_rollout(:,3)] = rolloutDPTrajOde(policyPoleTCartF, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T);
+trajXPTCF(3, end, :) = mod(trajXPTCF(3, end, :), 2*pi);
 trajXPTCFErr = trajXPTCF(:, end, :) - sys.goal;
 DP_finalerr(:, 3) = reshape(vecnorm(trajXPTCFErr), size(x_starts,2), 1);
 
 [trajXPTCF, trajUPTCF, J_DP_longhorz_rollout(:,3)] = rolloutDPTrajOde(policyPoleTCartF, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T_longhorz);
+trajXPTCF(3, end, :) = mod(trajXPTCF(3, end, :), 2*pi);
 trajXPTCFErr = trajXPTCF(:, end, :) - sys.goal;
 DP_longhorz_finalerr(:, 3) = reshape(vecnorm(trajXPTCFErr), size(x_starts,2), 1);
 
@@ -279,21 +286,26 @@ policyCartTPoleF(:,:,:,:,2) = t_cart_first_;
 policyCartTPoleF(:,:,:,:,1) = f_pole_second;
 
 [trajXCTPF, trajUCTPF, J_DP_rollout(:,4)] = rolloutDPTrajOde(policyCartTPoleF, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T);
+trajXCTPF(3, end, :) = mod(trajXCTPF(3, end, :), 2*pi);
 trajXCTPFErr = trajXCTPF(:, end, :) - sys.goal;
 DP_finalerr(:, 4) = reshape(vecnorm(trajXCTPFErr), size(x_starts,2), 1);
 
 [trajXCTPF, trajUCTPF, J_DP_longhorz_rollout(:,4)] = rolloutDPTrajOde(policyCartTPoleF, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T_longhorz);
+trajXCTPF(3, end, :) = mod(trajXCTPF(3, end, :), 2*pi);
 trajXCTPFErr = trajXCTPF(:, end, :) - sys.goal;
 DP_longhorz_finalerr(:, 4) = reshape(vecnorm(trajXCTPFErr), size(x_starts,2), 1);
 
 disp('Dec 4');
 policyPoleFCartT(:,:,:,:,1) = f_pole_first_;
 policyPoleFCartT(:,:,:,:,2) = t_cart_second;
+
 [trajXPFCT, trajUPFCT, J_DP_rollout(:,5)] = rolloutDPTrajOde(policyPoleFCartT, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T);
+trajXPFCT(3, end, :) = mod(trajXPFCT(3, end, :), 2*pi);
 trajXPFCTErr = trajXPFCT(:, end, :) - sys.goal;
 DP_finalerr(:, 5) = reshape(vecnorm(trajXPFCTErr), size(x_starts,2), 1);
 
 [trajXPFCT, trajUPFCT, J_DP_longhorz_rollout(:,5)] = rolloutDPTrajOde(policyPoleFCartT, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T_longhorz);
+trajXPFCT(3, end, :) = mod(trajXPFCT(3, end, :), 2*pi);
 trajXPFCTErr = trajXPFCT(:, end, :) - sys.goal;
 DP_longhorz_finalerr(:, 5) = reshape(vecnorm(trajXPFCTErr), size(x_starts,2), 1);
 
@@ -302,10 +314,12 @@ policyCartFPoleTDec(:,:,:,:,1) = f_cart_first_;
 policyCartFPoleTDec(:,:,:,:,2) = t_pole_first_;
 
 [trajXCFPTD, trajUCFPTD, J_DP_rollout(:,6)] = rolloutDPTrajOde(policyCartFPoleTDec, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T);
+trajXCFPTD(3, end, :) = mod(trajXCFPTD(3, end, :), 2*pi);
 trajXCFPTDErr = trajXCFPTD(:, end, :) - sys.goal;
 DP_finalerr(:, 6) = reshape(vecnorm(trajXCFPTDErr), size(x_starts,2), 1);
 
 [trajXCFPTD, trajUCFPTD, J_DP_longhorz_rollout(:,6)] = rolloutDPTrajOde(policyCartFPoleTDec, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T_longhorz);
+trajXCFPTD(3, end, :) = mod(trajXCFPTD(3, end, :), 2*pi);
 trajXCFPTDErr = trajXCFPTD(:, end, :) - sys.goal;
 DP_longhorz_finalerr(:, 6) = reshape(vecnorm(trajXCFPTDErr), size(x_starts,2), 1);
 
@@ -314,10 +328,12 @@ policyCartTPoleFDec(:,:,:,:,1) = f_pole_first_;
 policyCartTPoleFDec(:,:,:,:,2) = t_cart_first_;
 
 [trajXCTPFD, trajUCTPFD, J_DP_rollout(:,7)] = rolloutDPTrajOde(policyCartTPoleFDec, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T);
+trajXCTPFD(3, end, :) = mod(trajXCTPFD(3, end, :), 2*pi);
 trajXCTPFDErr = trajXCTPFD(:, end, :) - sys.goal;
 DP_finalerr(:, 7) = reshape(vecnorm(trajXCTPFDErr), size(x_starts,2), 1);
 
 [trajXCTPFD, trajUCTPFD, J_DP_longhorz_rollout(:,7)] = rolloutDPTrajOde(policyCartTPoleFDec, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T_longhorz);
+trajXCTPFD(3, end, :) = mod(trajXCTPFD(3, end, :), 2*pi);
 trajXCTPFDErr = trajXCTPFD(:, end, :) - sys.goal;
 DP_longhorz_finalerr(:, 7) = reshape(vecnorm(trajXCTPFDErr), size(x_starts,2), 1);
 
@@ -470,33 +486,6 @@ DP_avg_err = [sum(abs(V_joint(valid_range) - V_t_pole_second(valid_range)), 'all
 % [tXJLLLL, tUJLLLL, JLLLL, JWLLLL] = rolloutDPTrajOde(policy_joint, x_starts(:,1), sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, 32*T_longhorz);
 
 %% Functions
-function [trajX, trajU, J, J_WrapAround] = rolloutDPTraj(policy, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T)
-    
-    NUM_CTRL = round(T / sys.dt);
-    trajX = nan(4, NUM_CTRL+1, size(x_starts, 2));
-    trajU = nan(2, NUM_CTRL, size(x_starts, 2));
-    J = zeros(size(x_starts, 2), 1);
-    J_WrapAround = zeros(size(x_starts, 2), 1);
-    P1 = griddedInterpolant(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,1));
-    P2 = griddedInterpolant(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,2));
-    
-    for jj = 1:1:size(x_starts, 2)
-        trajX(:, 1, jj) = x_starts(: ,jj);
-        for ii=1:1:NUM_CTRL
-            x_ = [min(limits(1, 2), max(limits(1, 1), trajX(1, ii, jj)));
-                  min(limits(2, 2), max(limits(2, 1), trajX(2, ii, jj)));
-                  min(limits(3, 2), max(limits(3, 1), trajX(3, :, jj)));
-%                   mod(trajX(3, :, jj), 2*pi);
-                  min(limits(4, 2), max(limits(4, 1), trajX(4, ii, jj)))];
-            
-            trajU(1, ii, jj) = P1(x_(1),  x_(2),  x_(3),  x_(4));
-            trajU(2, ii, jj) = P2(x_(1),  x_(2),  x_(3),  x_(4));
-            [trajX(:, ii+1, jj),~] = sys.dynamics_discrete(trajX(:, ii, jj), trajU(:, ii, jj));
-        end
-        J_WrapAround(jj, 1) = J_CartPole_WrapAround(sys, trajX(:,:, jj), trajU(:,:, jj));
-        J(jj, 1) = J_CartPole(sys, trajX(:,:, jj), trajU(:,:, jj));
-    end
-end
 
 function [trajX, trajU, J] = rolloutDPTrajOde(policy, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T)
     
@@ -509,16 +498,16 @@ function [trajX, trajU, J] = rolloutDPTrajOde(policy, x_starts, sys, limits, gri
     P1 = griddedInterpolant(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,1));
     P2 = griddedInterpolant(grid_x, grid_x_dot, grid_xP, grid_xP_dot, policy(:,:,:,:,2));
     for jj = 1:1:size(x_starts, 2)
-        [~, X] = ode113(@(t,y) cartpole_dyn_gridbased(t, y, P1, P2, limits, sys), tspan, x_starts(:, jj), opts);
+        [~, X] = ode113(@(t,y) cartpole_dyn_wraparound_gridbased(t, y, P1, P2, limits, sys), tspan, x_starts(:, jj), opts);
         trajX(:,:, jj) = X';
         X_ = [min(limits(1, 2), max(limits(1, 1), trajX(1, :, jj)));
               min(limits(2, 2), max(limits(2, 1), trajX(2, :, jj)));
-              min(limits(3, 2), max(limits(3, 1), trajX(3, :, jj)));
+              mod(trajX(3, :, jj), 2*pi);
               min(limits(4, 2), max(limits(4, 1), trajX(4, :, jj)))];
         
         trajU(1, :, jj) = P1(X_(1,1:(end-1)), X_(2,1:(end-1)), X_(3,1:(end-1)), X_(4,1:(end-1)));
         trajU(2, :, jj) = P2(X_(1,1:(end-1)), X_(2,1:(end-1)), X_(3,1:(end-1)), X_(4,1:(end-1)));
-        J(jj, 1) = J_CartPole(sys, trajX(:,:, jj), trajU(:,:, jj));
+        J(jj, 1) = J_CartPole_WrapAround(sys, trajX(:,:, jj), trajU(:,:, jj));
         disp(strcat('start : ', num2str(jj)));
     end
     
