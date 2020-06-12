@@ -125,6 +125,7 @@ for kk=1:1:3
         sysTS_.V_DP_bounded = policyEvaluationFull(sys.mc, sys.mp, sys.l, sys.g, sys.goal, sys.dt, Q, R, sys.gamma_, ...
                                                policyF_bounded, policyT_bounded, grid_x, grid_x_dot, grid_xP, grid_xP_dot, gtol, max_iter);
         sysTS{numCompleted + ii, 1} = sysTS_;
+        disp(strcat("FF Num dims :", num2str(kk), ", Decomposition :", num2str(ii)));
         
     end
     numCompleted = numCompleted + size(C, 1);
@@ -197,7 +198,7 @@ for kk=1:1:3
         sysFS_.V_DP_bounded = policyEvaluationFull(sys.mc, sys.mp, sys.l, sys.g, sys.goal, sys.dt, Q, R, sys.gamma_, ...
                                                policyF_bounded, policyT_bounded, grid_x, grid_x_dot, grid_xP, grid_xP_dot, gtol, max_iter);
         sysFS{numCompleted + ii, 1} = sysFS_;
-        disp(strcat("TF Num dims :", num2str(kk), ", Trajectory :", num2str(jj)));
+        disp(strcat("TF Num dims :", num2str(kk), ", Decomposition :", num2str(ii)));
     end
     numCompleted = numCompleted + size(C, 1);
 
