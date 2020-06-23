@@ -223,3 +223,5 @@ for kk=1:3
     end
     numCompleted = numCompleted + size(C, 1);
 end
+
+save(strcat('data/iLQGCartPoleAllPossibleDecomposed_diffR_furthercloserstarts_alpha_',num2str(Op.Alpha),'_gamma_',num2str(sys.gamma_),'mc=',num2str(sys.mc),',mp=',num2str(sys.mp),'.mat'));
