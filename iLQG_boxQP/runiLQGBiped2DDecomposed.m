@@ -152,11 +152,8 @@ end
 %% COM - F, Torso - T
 disp('**** F - COM, T - Both ****');
 % COM First
-A_ = A(1:4,1:4);
-B_ = B(1:4,1:2);
-Q_ = sys.Q(1:4,1:4);
-R_ = sys.R(1:2,1:2);
-[K_COMFF, S_COMFF, e_COMFF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
+% A_ = A(1:4,1:4);
+% B_ = B(1:4,1:2);
 
 disp('F - COM')
 sys_COMFF = sys;
@@ -166,6 +163,16 @@ sys_COMFF.U_DIMS_FIXED(sys_COMFF.U_DIMS_FREE) = [];
 sys_COMFF.X_DIMS_FREE = [1;2;3;4];
 sys_COMFF.X_DIMS_FIXED = linspace(1,6,6)';
 sys_COMFF.X_DIMS_FIXED(sys_COMFF.X_DIMS_FREE) = [];
+
+u0 = sys.u0;
+u0(sys_COMFF.U_DIMS_FIXED) = 0;
+A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
+A_ = A_(1:4,1:4);
+B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
+B_ = B_(1:4,1:2);
+Q_ = sys.Q(1:4,1:4);
+R_ = sys.R(1:2,1:2);
+[K_COMFF, S_COMFF, e_COMFF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
 
 Op.lims = sys_COMFF.lims(sys_COMFF.U_DIMS_FREE, :);
 XCOMFF = zeros(length(sys_COMFF.X_DIMS_FREE) + length(sys_COMFF.X_DIMS_FIXED), NUM_CTRL+1, size(com_starts, 2));
@@ -277,11 +284,8 @@ end
 %% Torso - T, COM - F
 disp('**** T - Torso, F - Both ****');
 % Torso first
-A_ = A(5:6,5:6);
-B_ = B(5:6,3:4);
-Q_ = sys.Q(5:6,5:6);
-R_ = sys.R(3:4,3:4);
-[K_TorsoTF, S_TorsoTF, e_TorsoTF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
+% A_ = A(5:6,5:6);
+% B_ = B(5:6,3:4);
 
 disp('T - Torso');
 sys_TorsoTF = sys;
@@ -291,6 +295,16 @@ sys_TorsoTF.U_DIMS_FIXED(sys_TorsoTF.U_DIMS_FREE) = [];
 sys_TorsoTF.X_DIMS_FREE = [5; 6];
 sys_TorsoTF.X_DIMS_FIXED = linspace(1,6,6)';
 sys_TorsoTF.X_DIMS_FIXED(sys_TorsoTF.X_DIMS_FREE) = [];
+
+u0 = sys.u0;
+u0(sys_TorsoTF.U_DIMS_FIXED) = 0;
+A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
+A_ = A_(5:6,5:6);
+B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
+B_ = B_(5:6,3:4);
+Q_ = sys.Q(5:6,5:6);
+R_ = sys.R(3:4,3:4);
+[K_TorsoTF, S_TorsoTF, e_TorsoTF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
 
 Op.lims = sys_TorsoTF.lims(sys_TorsoTF.U_DIMS_FREE, :);
 XTorsoTF = zeros(length(sys_TorsoTF.X_DIMS_FREE) + length(sys_TorsoTF.X_DIMS_FIXED), NUM_CTRL+1, size(theta_starts, 2));
@@ -400,11 +414,8 @@ end
 %% COM - T, Torso - F
 disp('**** T - COM, F - Both ****');
 % COM first
-A_ = A(1:4,1:4);
-B_ = B(1:4,3:4);
-Q_ = sys.Q(1:4,1:4);
-R_ = sys.R(3:4,3:4);
-[K_COMTF, S_COMTF, e_COMTF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
+% A_ = A(1:4,1:4);
+% B_ = B(1:4,3:4);
 
 disp('T - COM');
 sys_COMTF = sys;
@@ -414,6 +425,16 @@ sys_COMTF.U_DIMS_FIXED(sys_COMTF.U_DIMS_FREE) = [];
 sys_COMTF.X_DIMS_FREE = [1;2;3;4];
 sys_COMTF.X_DIMS_FIXED = linspace(1,6,6)';
 sys_COMTF.X_DIMS_FIXED(sys_COMFF.X_DIMS_FREE) = [];
+
+u0 = sys.u0;
+u0(sys_COMTF.U_DIMS_FIXED) = 0;
+A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
+A_ = A_(1:4,1:4);
+B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
+B_ = B_(1:4,3:4);
+Q_ = sys.Q(1:4,1:4);
+R_ = sys.R(3:4,3:4);
+[K_COMTF, S_COMTF, e_COMTF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
 
 Op.lims = sys_COMTF.lims(sys_COMTF.U_DIMS_FREE, :);
 XCOMTF = zeros(length(sys_COMTF.X_DIMS_FREE) + length(sys_COMTF.X_DIMS_FIXED), NUM_CTRL+1, size(com_starts, 2));
@@ -524,11 +545,8 @@ end
 %% Torso - F, COM - T
 disp('**** F - Torso, T - Both ****');
 % Torso first
-A_ = A(5:6,5:6);
-B_ = B(5:6,1:2);
-Q_ = sys.Q(5:6,5:6);
-R_ = sys.R(1:2,1:2);
-[K_TorsoFF, S_TorsoFF, e_TorsoFF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
+% A_ = A(5:6,5:6);
+% B_ = B(5:6,1:2);
 
 disp('F - Torso');
 sys_TorsoFF = sys;
@@ -538,6 +556,16 @@ sys_TorsoFF.U_DIMS_FIXED(sys_TorsoFF.U_DIMS_FREE) = [];
 sys_TorsoFF.X_DIMS_FREE = [5; 6];
 sys_TorsoFF.X_DIMS_FIXED = linspace(1,6,6)';
 sys_TorsoFF.X_DIMS_FIXED(sys_TorsoFF.X_DIMS_FREE) = [];
+
+u0 = sys.u0;
+u0(sys_TorsoFF.U_DIMS_FIXED) = 0;
+A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
+A_ = A_(5:6,5:6);
+B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
+B_ = B_(5:6,1:2);
+Q_ = sys.Q(5:6,5:6);
+R_ = sys.R(1:2,1:2);
+[K_TorsoFF, S_TorsoFF, e_TorsoFF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
 
 Op.lims = sys_TorsoFF.lims(sys_TorsoFF.U_DIMS_FREE, :);
 XTorsoFF = zeros(length(sys_TorsoFF.X_DIMS_FREE) + length(sys_TorsoFF.X_DIMS_FIXED), NUM_CTRL+1, size(theta_starts, 2));

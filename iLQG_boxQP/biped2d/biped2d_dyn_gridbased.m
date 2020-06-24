@@ -1,4 +1,4 @@
-function dx = biped2d_dyn_gridbased(t, x, policy, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, limits, sys)
+function dx = biped2d_dyn_gridbased(t, x, policy1, policy2, policy3, policy4, limits, sys)
     
     x_ = [min(limits(1, 2), max(limits(1, 1), x(1)));
           min(limits(2, 2), max(limits(2, 1), x(2)));
@@ -7,14 +7,10 @@ function dx = biped2d_dyn_gridbased(t, x, policy, grid_l, grid_a, grid_x_dot, gr
           min(limits(5, 2), max(limits(5, 1), x(5)));
           min(limits(6, 2), max(limits(6, 1), x(6)))];
     
-    F1 = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, policy(:,:,:,:,1), ...
-                     x_(1), x_(2), x_(3), x_(4), x_(5), x_(6));
-    F2 = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, policy(:,:,:,:,2), ...
-                     x_(1), x_(2), x_(3), x_(4), x_(5), x_(6));
-    T1 = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, policy(:,:,:,:,3), ...
-                     x_(1), x_(2), x_(3), x_(4), x_(5), x_(6));
-    T2 = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, policy(:,:,:,:,4), ...
-                     x_(1), x_(2), x_(3), x_(4), x_(5), x_(6));
+    F1 = policy1(x_(1), x_(2), x_(3), x_(4), x_(5), x_(6));
+    F2 = policy2(x_(1), x_(2), x_(3), x_(4), x_(5), x_(6));
+    T1 = policy3(x_(1), x_(2), x_(3), x_(4), x_(5), x_(6));
+    T2 = policy4(x_(1), x_(2), x_(3), x_(4), x_(5), x_(6));
     
     ca1       = cos(x(2));
     sa1       = sin(x(2));
