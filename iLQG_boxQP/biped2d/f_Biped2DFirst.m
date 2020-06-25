@@ -1,7 +1,8 @@
 function dx = f_Biped2DFirst(sys, x, u)
 
     l_point = sys.l_point;
-
+    lims = sys.lims;
+    
     X_DIMS_FREE = sys.X_DIMS_FREE;
     X_DIMS_FIXED = sys.X_DIMS_FIXED;
 
@@ -10,6 +11,8 @@ function dx = f_Biped2DFirst(sys, x, u)
 
     U = zeros(length(U_DIMS_FIXED) + length(U_DIMS_FREE), size(u, 2));
     U(U_DIMS_FREE, :) = u;
+    U = max(repmat(lims(:,1), [1, size(u,2)]), ...
+            min(repmat(lims(:,2), [1, size(u,2)]), U));
     X = zeros(length(X_DIMS_FIXED) + length(X_DIMS_FREE), size(x, 2));
     X(X_DIMS_FREE, :) = x;
     X(X_DIMS_FIXED, :) = repmat(l_point(X_DIMS_FIXED), [1, size(x,2)]);

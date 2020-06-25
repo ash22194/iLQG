@@ -71,7 +71,7 @@ lambda_ = (1 - sys.gamma_)/sys.dt;
 Op.lims  = sys.lims;
 Op.maxIter = 500;
 Op.gamma_ = sys.gamma_;
-% Op.Alpha = [1];
+Op.Alpha = [1];
 
 % Define starts
 com_pos = [0.92, 0.92, 1.0, 1.0;
@@ -79,7 +79,7 @@ com_pos = [0.92, 0.92, 1.0, 1.0;
 com_pos(2,:) = pi/2 + com_pos(2,:);
 com_vel = [ 0.1, -0.1, 0.1, -0.1;
            -0.3, -0.3, -0.4, -0.4];
-theta_starts = [-0.4,  -0.25, 0.25, 0.4;
+theta_starts = [-0.25,  -0.125, 0.125, 0.25;
                    0,      0,    0,   0];
 
 x_starts = nan(6, size(com_pos,2)*size(com_vel,2)*size(theta_starts,2));
@@ -101,7 +101,7 @@ end
 % theta_starts = theta_starts(:,1);
 
 save_dir = "data/";
-save_file = "iLQGBiped2DDecomposed";
+save_file = strcat("iLQGBiped2DDecomposed_newthetastarts_incorrlin_alpha_", num2str(Op.Alpha));
 
 %% Joint
 [K_joint, S_joint, e_joint] = lqr(A - lambda_/2*eye(size(A,1)), B, ...
@@ -152,8 +152,8 @@ end
 %% COM - F, Torso - T
 disp('**** F - COM, T - Both ****');
 % COM First
-% A_ = A(1:4,1:4);
-% B_ = B(1:4,1:2);
+A_ = A(1:4,1:4);
+B_ = B(1:4,1:2);
 
 disp('F - COM')
 sys_COMFF = sys;
@@ -164,12 +164,12 @@ sys_COMFF.X_DIMS_FREE = [1;2;3;4];
 sys_COMFF.X_DIMS_FIXED = linspace(1,6,6)';
 sys_COMFF.X_DIMS_FIXED(sys_COMFF.X_DIMS_FREE) = [];
 
-u0 = sys.u0;
-u0(sys_COMFF.U_DIMS_FIXED) = 0;
-A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
-A_ = A_(1:4,1:4);
-B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
-B_ = B_(1:4,1:2);
+% u0 = sys.u0;
+% u0(sys_COMFF.U_DIMS_FIXED) = 0;
+% A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
+% A_ = A_(1:4,1:4);
+% B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
+% B_ = B_(1:4,1:2);
 Q_ = sys.Q(1:4,1:4);
 R_ = sys.R(1:2,1:2);
 [K_COMFF, S_COMFF, e_COMFF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
@@ -284,8 +284,8 @@ end
 %% Torso - T, COM - F
 disp('**** T - Torso, F - Both ****');
 % Torso first
-% A_ = A(5:6,5:6);
-% B_ = B(5:6,3:4);
+A_ = A(5:6,5:6);
+B_ = B(5:6,3:4);
 
 disp('T - Torso');
 sys_TorsoTF = sys;
@@ -296,12 +296,12 @@ sys_TorsoTF.X_DIMS_FREE = [5; 6];
 sys_TorsoTF.X_DIMS_FIXED = linspace(1,6,6)';
 sys_TorsoTF.X_DIMS_FIXED(sys_TorsoTF.X_DIMS_FREE) = [];
 
-u0 = sys.u0;
-u0(sys_TorsoTF.U_DIMS_FIXED) = 0;
-A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
-A_ = A_(5:6,5:6);
-B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
-B_ = B_(5:6,3:4);
+% u0 = sys.u0;
+% u0(sys_TorsoTF.U_DIMS_FIXED) = 0;
+% A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
+% A_ = A_(5:6,5:6);
+% B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
+% B_ = B_(5:6,3:4);
 Q_ = sys.Q(5:6,5:6);
 R_ = sys.R(3:4,3:4);
 [K_TorsoTF, S_TorsoTF, e_TorsoTF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
@@ -414,8 +414,8 @@ end
 %% COM - T, Torso - F
 disp('**** T - COM, F - Both ****');
 % COM first
-% A_ = A(1:4,1:4);
-% B_ = B(1:4,3:4);
+A_ = A(1:4,1:4);
+B_ = B(1:4,3:4);
 
 disp('T - COM');
 sys_COMTF = sys;
@@ -426,12 +426,12 @@ sys_COMTF.X_DIMS_FREE = [1;2;3;4];
 sys_COMTF.X_DIMS_FIXED = linspace(1,6,6)';
 sys_COMTF.X_DIMS_FIXED(sys_COMFF.X_DIMS_FREE) = [];
 
-u0 = sys.u0;
-u0(sys_COMTF.U_DIMS_FIXED) = 0;
-A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
-A_ = A_(1:4,1:4);
-B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
-B_ = B_(1:4,3:4);
+% u0 = sys.u0;
+% u0(sys_COMTF.U_DIMS_FIXED) = 0;
+% A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
+% A_ = A_(1:4,1:4);
+% B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
+% B_ = B_(1:4,3:4);
 Q_ = sys.Q(1:4,1:4);
 R_ = sys.R(3:4,3:4);
 [K_COMTF, S_COMTF, e_COMTF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
@@ -545,8 +545,8 @@ end
 %% Torso - F, COM - T
 disp('**** F - Torso, T - Both ****');
 % Torso first
-% A_ = A(5:6,5:6);
-% B_ = B(5:6,1:2);
+A_ = A(5:6,5:6);
+B_ = B(5:6,1:2);
 
 disp('F - Torso');
 sys_TorsoFF = sys;
@@ -557,12 +557,12 @@ sys_TorsoFF.X_DIMS_FREE = [5; 6];
 sys_TorsoFF.X_DIMS_FIXED = linspace(1,6,6)';
 sys_TorsoFF.X_DIMS_FIXED(sys_TorsoFF.X_DIMS_FREE) = [];
 
-u0 = sys.u0;
-u0(sys_TorsoFF.U_DIMS_FIXED) = 0;
-A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
-A_ = A_(5:6,5:6);
-B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
-B_ = B_(5:6,1:2);
+% u0 = sys.u0;
+% u0(sys_TorsoFF.U_DIMS_FIXED) = 0;
+% A_ = eval(subs(state_dyn_x, [x; u], [sys.l_point; u0]));
+% A_ = A_(5:6,5:6);
+% B_ = eval(subs(act_dyn_u, [x; u], [sys.l_point; u0]));
+% B_ = B_(5:6,1:2);
 Q_ = sys.Q(5:6,5:6);
 R_ = sys.R(1:2,1:2);
 [K_TorsoFF, S_TorsoFF, e_TorsoFF] = lqr(A_ - lambda_/2*eye(size(A_,1)), B_, Q_, R_);
@@ -631,13 +631,14 @@ KCOMTS = zeros(length(sys_COMTS.U_DIMS_FREE), length(sys_COMTS.X_DIMS_FREE), NUM
 XTorsoFClose = nan(length(sys_COMTS.X_DIMS_FREE), NUM_CTRL+1, size(x_starts, 2));
 UTorsoFClose = zeros(length(sys_TorsoFF.U_DIMS_FREE), NUM_CTRL+1, size(x_starts, 2));
 KTorsoFClose = zeros(length(sys_TorsoFF.U_DIMS_FREE), length(sys_COMTS.X_DIMS_FREE), NUM_CTRL+1, size(x_starts, 2));
-XCOMTSinit = nan(length(sys_COMFS.X_DIMS_FREE), NUM_CTRL+1, size(x_starts, 2));
-UCOMTSinit = nan(length(sys_COMFS.U_DIMS_FREE), NUM_CTRL+1, size(x_starts, 2));
+XCOMTSinit = nan(length(sys_COMTS.X_DIMS_FREE), NUM_CTRL+1, size(x_starts, 2));
+UCOMTSinit = nan(length(sys_COMTS.U_DIMS_FREE), NUM_CTRL+1, size(x_starts, 2));
 CostCOMTSinit = zeros(size(x_starts, 2), 1);
 TraceCOMTS = cell(size(x_starts, 2), 1);
 timeCOMTS = zeros(size(x_starts, 2), 1);
 
-u0 = sys_COMTS.u0(sys_COMTS.U_DIMS_FREE, 1);
+u0Free = sys_COMTS.u0(sys_COMTS.U_DIMS_FREE, 1);
+u0Fixed = sys_COMTS.u0(sys_COMTS.U_DIMS_FIXED, 1);
 goal = sys_COMTS.goal(sys_COMTS.X_DIMS_FREE, 1);
 lims = sys_COMTS.lims(sys_COMTS.U_DIMS_FREE, :);
 for jj=1:1:size(x_starts, 2)
@@ -647,12 +648,27 @@ for jj=1:1:size(x_starts, 2)
     XCOMTSinit(:,1, jj) = x_starts(:,jj);
     discount = 1;
     for ii=1:1:NUM_CTRL
-        UCOMTSinit(:,ii, jj) = min(max(u0 - K_COMTS*(XCOMTSinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
-        XCOMTSinit(:,ii+1, jj) = f_Biped2DSecond_finite(sys_COMTS, XCOMTSinit(:,ii, jj), UCOMTSinit(:,ii, jj), sys_COMTS.u0(sys_COMTS.U_DIMS_FIXED,1), -K_TorsoFF, sys_TorsoFF.goal, sys_COMTS.dt);
-        CostCOMTSinit(jj) = CostCOMTSinit(jj) + discount*l_Biped2DSecond(sys_COMTS, XCOMTSinit(:,ii, jj), UCOMTSinit(:,ii, jj) - u0, zeros(2,1), -K_TorsoFF, sys_TorsoFF.goal)*sys_COMTS.dt;
+        UCOMTSinit(:,ii, jj) = min(max(u0Free - K_COMTS*(XCOMTSinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
+        [~, t_closest] = min(vecnorm(XCOMTSinit(:,ii, jj) - XTorsoFF(:,:,mod(jj-1, size(theta_starts,2))+1), 2, 1));
+        XTFF = XTorsoFF(:,t_closest,mod(jj-1, size(theta_starts,2))+1);
+        UTFF = UTorsoFF(:,t_closest,mod(jj-1, size(theta_starts,2))+1);
+        KTFF = KTorsoFF(:,:,t_closest,mod(jj-1, size(theta_starts,2))+1);
+%         XTFF = sys_TorsoFF.goal;
+%         UTFF = u0Fixed;
+%         KTFF = -K_TorsoFF;
+        
+        XCOMTSinit(:,ii+1, jj) = f_Biped2DSecond_finite(sys_COMTS, XCOMTSinit(:,ii, jj), UCOMTSinit(:,ii, jj), UTFF, KTFF, XTFF, sys_COMTS.dt);
+        CostCOMTSinit(jj) = CostCOMTSinit(jj) + discount*l_Biped2DSecond(sys_COMTS, XCOMTSinit(:,ii, jj), UCOMTSinit(:,ii, jj) - u0Free, UTFF - u0Fixed, KTFF, XTFF)*sys_COMTS.dt;
         discount = discount*sys_COMTS.gamma_;
     end
-    CostCOMTSinit(jj) = CostCOMTSinit(jj) + discount*l_Biped2DSecond(sys_COMTS, XCOMTSinit(:,NUM_CTRL+1, jj), zeros(2,1), zeros(2,1), -K_TorsoFF, sys_TorsoFF.goal)*sys_COMTS.dt;
+    [~, t_closest] = min(vecnorm(XCOMTSinit(:,NUM_CTRL+1, jj) - XTorsoFF(:,:,mod(jj-1, size(theta_starts,2))+1), 2, 1));
+    XTFF = XTorsoFF(:,t_closest,mod(jj-1, size(theta_starts,2))+1);
+    UTFF = UTorsoFF(:,t_closest,mod(jj-1, size(theta_starts,2))+1);
+    KTFF = KTorsoFF(:,:,t_closest,mod(jj-1, size(theta_starts,2))+1);
+%     XTFF = sys_TorsoFF.goal;
+%     UTFF = u0Fixed;
+%     KTFF = -K_TorsoFF;
+    CostCOMTSinit(jj) = CostCOMTSinit(jj) + discount*l_Biped2DSecond(sys_COMTS, XCOMTSinit(:,NUM_CTRL+1, jj), zeros(2,1), UTFF - u0Fixed, KTFF, XTFF)*sys_COMTS.dt;
     
     Op.cost = CostCOMTSinit(jj);
     tic;
