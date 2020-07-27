@@ -46,7 +46,7 @@ sys.limits = [-1.5, 1.5;
 sys.u_limits = [-9, 9;
                 -9, 9];
 
-max_iter = 10;
+max_iter = 3000;
 gtol = 0.00001;
 
 % Joint
@@ -58,16 +58,28 @@ sys_joint.R = R;
 
 [sys_joint.K, sys_joint.S, sys_joint.e] = lqr(A - sys.lambda_*eye(size(A,1))/2, B, Q, R, ...
                                               zeros(size(A,1), size(B,2)));
+policyF = -(sys_joint.K(1,1)*(grid_x - sys.goal(1)) + sys_joint.K(1,2)*(grid_x_dot - sys.goal(2)) ...
+                    + sys_joint.K(1,3)*(grid_xP - sys.goal(3)) + sys_joint.K(1,4)*(grid_xP_dot - sys.goal(4)));
+policyF_bounded = min(sys.u_limits(1,2), max(sys.u_limits(1,1), policyF));
+policyT = -(sys_joint.K(2,1)*(grid_x - sys.goal(1)) + sys_joint.K(2,2)*(grid_x_dot - sys.goal(2)) ...
+                    + sys_joint.K(2,3)*(grid_xP - sys.goal(3)) + sys_joint.K(2,4)*(grid_xP_dot - sys.goal(4)));
+policyT_bounded = min(sys.u_limits(2,2), max(sys.u_limits(2,1), policyT));
+
+sys_joint.V_LQR = computeValueGrid(sys_joint.S, sys_joint.l_point, grid_x, grid_x_dot, grid_xP, grid_xP_dot);
+sys_joint.V_DP = policyEvaluationFull(sys.mc, sys.mp, sys.l, sys.g, sys.goal, sys.dt, Q, R, sys.gamma_, ...
+                                       policyF, policyT, grid_x, grid_x_dot, grid_xP, grid_xP_dot, gtol, max_iter);
+sys_joint.V_DP_bounded = policyEvaluationFull(sys.mc, sys.mp, sys.l, sys.g, sys.goal, sys.dt, Q, R, sys.gamma_, ...
+                                       policyF_bounded, policyT_bounded, grid_x, grid_x_dot, grid_xP, grid_xP_dot, gtol, max_iter);
 
 X_DIMS = [1;2;3;4];
 U_DIMS = [1;2];
 % F First
 disp("Cascaded F First");
 numCompleted = 0;
-sysFF = cell(2^length(X_DIMS) - 2, 1);
-sysTS = cell(2^length(X_DIMS) - 2, 1);
+sysFF = cell(2^length(X_DIMS) - 1, 1);
+sysTS = cell(2^length(X_DIMS) - 1, 1);
 
-for kk=1:1:3
+for kk=1:1:4
     C = nchoosek(X_DIMS, kk);
     for ii=1:1:size(C, 1)
         sysFF_ = sys;
@@ -101,7 +113,7 @@ for kk=1:1:3
         sysTS_.U_DIMS_FIXED = [1];
         
         A_ = A;
-        A_(:, sysFF_.X_DIMS_FREE) = A_(:, sysFF_.X_DIMS_FREE) - sysFF_.B*sysFF_.K;
+        A_(:, sysFF_.X_DIMS_FREE) = A_(:, sysFF_.X_DIMS_FREE) - B(:, sysFF_.U_DIMS_FREE)*sysFF_.K;
         B_ = B;
         B_(:, sysFF_.U_DIMS_FREE) = zeros(size(B,1), length(sysFF_.U_DIMS_FREE));
         Q_ = Q;
@@ -119,7 +131,13 @@ for kk=1:1:3
                     + sysTS_.K(1,3)*(grid_xP - sys.goal(3)) + sysTS_.K(1,4)*(grid_xP_dot - sys.goal(4)));
         policyT_bounded = min(sys.u_limits(2,2), max(sys.u_limits(2,1), policyT));
         
-        sysTS_.V_LQR = computeValueGrid(sysTS_.S, sysTS_.l_point, grid_x, grid_x_dot, grid_xP, grid_xP_dot);
+        if (any(eig(sysTS_.S) < 0))
+            sysTS_.S = inf*eye(size(sysTS_.S, 1));
+            sysTS_.V_LQR = inf*ones(size(grid_x));
+        else
+            sysTS_.V_LQR = computeValueGrid(sysTS_.S, sysTS_.l_point, grid_x, grid_x_dot, grid_xP, grid_xP_dot);
+        end
+        
         sysTS_.V_DP = policyEvaluationFull(sys.mc, sys.mp, sys.l, sys.g, sys.goal, sys.dt, Q, R, sys.gamma_, ...
                                        policyF, policyT, grid_x, grid_x_dot, grid_xP, grid_xP_dot, gtol, max_iter);
         sysTS_.V_DP_bounded = policyEvaluationFull(sys.mc, sys.mp, sys.l, sys.g, sys.goal, sys.dt, Q, R, sys.gamma_, ...
@@ -135,10 +153,10 @@ end
 % T First
 disp("Cascaded T First");
 numCompleted = 0;
-sysTF = cell(2^length(X_DIMS) - 2, 1);
-sysFS = cell(2^length(X_DIMS) - 2, 1);
+sysTF = cell(2^length(X_DIMS) - 1, 1);
+sysFS = cell(2^length(X_DIMS) - 1, 1);
 
-for kk=1:1:3
+for kk=1:1:4
     C = nchoosek(X_DIMS, kk);
     for ii=1:1:size(C, 1)
         sysTF_ = sys;
@@ -156,15 +174,13 @@ for kk=1:1:3
         sysTF_.B = B_;
         sysTF_.Q = Q_;
         sysTF_.R = R_;
-        [K, S, sysTF_.e] = lqr(A_ - sysTF_.lambda_*eye(size(A_,1))/2, B_, Q_, R_, ...
+        [sysTF_.K, sysTF_.S, sysTF_.e] = lqr(A_ - sysTF_.lambda_*eye(size(A_,1))/2, B_, Q_, R_, ...
                                               zeros(size(A_,1), size(B_,2)));
-        sysTF_.K = zeros(length(sysTF_.U_DIMS_FREE), length(X_DIMS));
-        sysTF_.K(:,sysTF_.X_DIMS_FREE) = K;
-        sysTF_.S = zeros(length(X_DIMS));
-        sysTF_.S(sysTF_.X_DIMS_FREE, sysTF_.X_DIMS_FREE) = S;
-        policyT = -(sysTF_.K(1,1)*(grid_x - sys.goal(1)) + sysTF_.K(1,2)*(grid_x_dot - sys.goal(2)) ...
-                    + sysTF_.K(1,3)*(grid_xP - sys.goal(3)) + sysTF_.K(1,4)*(grid_xP_dot - sys.goal(4)));
-        policyT_bounded = min(sys.u_limits(1,2), max(sys.u_limits(1,1), policyT));
+        K = zeros(length(sysTF_.U_DIMS_FREE), length(X_DIMS));
+        K(:,sysTF_.X_DIMS_FREE) = sysTF_.K;
+        policyT = -(K(1,1)*(grid_x - sys.goal(1)) + K(1,2)*(grid_x_dot - sys.goal(2)) ...
+                    + K(1,3)*(grid_xP - sys.goal(3)) + K(1,4)*(grid_xP_dot - sys.goal(4)));
+        policyT_bounded = min(sys.u_limits(2,2), max(sys.u_limits(2,1), policyT));
         sysTF{numCompleted + ii, 1} = sysTF_;
         
         sysFS_ = sys;
@@ -174,7 +190,7 @@ for kk=1:1:3
         sysFS_.U_DIMS_FIXED = [2];
         
         A_ = A;
-        A_(:, sysTF_.X_DIMS_FREE) = A_(:, sysTF_.X_DIMS_FREE) - sysTF_.B*sysTF_.K;
+        A_(:, sysTF_.X_DIMS_FREE) = A_(:, sysTF_.X_DIMS_FREE) - B(:, sysTF_.U_DIMS_FREE)*sysTF_.K;
         B_ = B;
         B_(:, sysTF_.U_DIMS_FREE) = zeros(size(B,1), length(sysTF_.U_DIMS_FREE));
         Q_ = Q;
@@ -190,9 +206,15 @@ for kk=1:1:3
         sysFS_.K = sysFS_.K(sysFS_.U_DIMS_FREE, :);
         policyF = -(sysFS_.K(1,1)*(grid_x - sys.goal(1)) + sysFS_.K(1,2)*(grid_x_dot - sys.goal(2)) ...
                     + sysFS_.K(1,3)*(grid_xP - sys.goal(3)) + sysFS_.K(1,4)*(grid_xP_dot - sys.goal(4)));
-        policyF_bounded = min(sys.u_limits(2,2), max(sys.u_limits(2,1), policyF));
+        policyF_bounded = min(sys.u_limits(1,2), max(sys.u_limits(1,1), policyF));
         
-        sysFS_.V_LQR = computeValueGrid(sysFS_.S, sysFS_.l_point, grid_x, grid_x_dot, grid_xP, grid_xP_dot);
+        if (any(eig(sysFS_.S) < 0))
+            sysFS_.S = inf*eye(size(sysFS_.S, 1));
+            sysFS_.V_LQR = inf*ones(size(grid_x));
+        else
+            sysFS_.V_LQR = computeValueGrid(sysFS_.S, sysFS_.l_point, grid_x, grid_x_dot, grid_xP, grid_xP_dot);
+        end
+        
         sysFS_.V_DP = policyEvaluationFull(sys.mc, sys.mp, sys.l, sys.g, sys.goal, sys.dt, Q, R, sys.gamma_, ...
                                        policyF, policyT, grid_x, grid_x_dot, grid_xP, grid_xP_dot, gtol, max_iter);
         sysFS_.V_DP_bounded = policyEvaluationFull(sys.mc, sys.mp, sys.l, sys.g, sys.goal, sys.dt, Q, R, sys.gamma_, ...
@@ -202,6 +224,106 @@ for kk=1:1:3
     end
     numCompleted = numCompleted + size(C, 1);
 
+end
+
+%% Decoupled
+sysDec = cell(2^length(X_DIMS) - 2, 1);
+for ii=1:1:(size(sysFF,1)-1)
+    sysFF_ = sysFF{ii,1};
+    sysDec_ = sysFF_;
+    T_DIMS_FREE = X_DIMS;
+    T_DIMS_FREE(sysFF_.X_DIMS_FREE) = [];
+    for jj=1:1:size(sysTF,1)
+        sysTF_ = sysTF{jj,1};
+        if (isempty(setdiff(T_DIMS_FREE, sysTF_.X_DIMS_FREE)) ...
+            && isempty(setdiff(sysTF_.X_DIMS_FREE, T_DIMS_FREE)))
+            break;
+        end
+    end
+    
+    sysDec_.K = zeros(length(U_DIMS), length(X_DIMS));
+    sysDec_.K(sysFF_.U_DIMS_FREE, sysFF_.X_DIMS_FREE) = sysFF_.K;
+    sysDec_.K(sysTF_.U_DIMS_FREE, sysTF_.X_DIMS_FREE) = sysTF_.K;
+    
+    sysDec_.A = A;
+    sysDec_.B = B;
+    sysDec_.Q = Q;
+    sysDec_.R = R;
+    sysDec_.l_point = sys.l_point;
+    
+    policyF = -(sysDec_.K(1,1)*(grid_x - sys.goal(1)) + sysDec_.K(1,2)*(grid_x_dot - sys.goal(2)) ...
+                    + sysDec_.K(1,3)*(grid_xP - sys.goal(3)) + sysDec_.K(1,4)*(grid_xP_dot - sys.goal(4)));
+    policyF_bounded = min(sys.u_limits(1,2), max(sys.u_limits(1,1), policyF));
+    policyT = -(sysDec_.K(2,1)*(grid_x - sys.goal(1)) + sysDec_.K(2,2)*(grid_x_dot - sys.goal(2)) ...
+                    + sysDec_.K(2,3)*(grid_xP - sys.goal(3)) + sysDec_.K(2,4)*(grid_xP_dot - sys.goal(4)));
+    policyT_bounded = min(sys.u_limits(2,2), max(sys.u_limits(2,1), policyT));
+    
+    sysDec_.S = lyap((sysDec_.A - sysDec_.B*sysDec_.K - sysDec_.lambda_/2*eye(size(sysDec_.A,1)))'...
+                      ,sysDec_.K'*sysDec_.R*sysDec_.K + sysDec_.Q);
+    if (any(eig(sysDec_.S) < 0))
+        sysDec_.S = inf*eye(size(sysDec_.S, 1));
+        sysDec_.V_LQR = inf*ones(size(grid_x));
+    else
+        sysDec_.V_LQR = computeValueGrid(sysDec_.S, sysDec_.l_point, grid_x, grid_x_dot, grid_xP, grid_xP_dot);
+    end
+    
+    sysDec_.V_DP = policyEvaluationFull(sys.mc, sys.mp, sys.l, sys.g, sys.goal, sys.dt, Q, R, sys.gamma_, ...
+                                       policyF, policyT, grid_x, grid_x_dot, grid_xP, grid_xP_dot, gtol, max_iter);                                   
+    sysDec_.V_DP_bounded = policyEvaluationFull(sys.mc, sys.mp, sys.l, sys.g, sys.goal, sys.dt, Q, R, sys.gamma_, ...
+                                       policyF_bounded, policyT_bounded, grid_x, grid_x_dot, grid_xP, grid_xP_dot, gtol, max_iter);
+    sysDec{ii, 1} = sysDec_;
+    disp(strcat("Dec, Decomposition :", num2str(ii)));
+end
+
+%% Compare
+state_bounds = [-0.5, 0.5;
+                -1, 1;
+                2*pi/3, 4*pi/3;
+                -1, 1];
+
+valid_range = ((grid_x >= state_bounds(1,1)) & (grid_x <= state_bounds(1,2)) ...
+                & (grid_x_dot >= state_bounds(2,1)) & (grid_x_dot <= state_bounds(2,2)) ...
+                & (grid_xP >= state_bounds(3,1)) & (grid_xP <= state_bounds(3,2)) ...
+                & (grid_xP_dot >= state_bounds(4,1)) & (grid_xP_dot <= state_bounds(4,2)));
+
+V_decomposition_err = [];
+V_err_DP = [];
+V_err_DP_bounded = [];
+Decompositions = cell(2*size(sysFF,1)+size(sysTF,1)-1, 2);
+for ii=1:1:size(sysFF,1)
+   V_decomposition_err = [V_decomposition_err; mean(abs(sysTS{ii,1}.V_LQR(valid_range) - sys_joint.V_LQR(valid_range)))];
+   V_err_DP = [V_err_DP; mean(abs(sysTS{ii,1}.V_DP(valid_range) - sys_joint.V_DP(valid_range)))];
+   V_err_DP_bounded = [V_err_DP_bounded; mean(abs(sysTS{ii,1}.V_DP_bounded(valid_range) - sys_joint.V_DP_bounded(valid_range)))];
+   Decompositions{ii,1} = sysFF{ii,1}.X_DIMS_FREE;
+   Decompositions{ii,2} = 1;
+end
+
+for ii=1:1:size(sysTF,1)
+   V_decomposition_err = [V_decomposition_err; mean(abs(sysFS{ii,1}.V_LQR(valid_range) - sys_joint.V_LQR(valid_range)))];
+   V_err_DP = [V_err_DP; mean(abs(sysFS{ii,1}.V_DP(valid_range) - sys_joint.V_DP(valid_range)))];
+   V_err_DP_bounded = [V_err_DP_bounded; mean(abs(sysFS{ii,1}.V_DP_bounded(valid_range) - sys_joint.V_DP_bounded(valid_range)))];
+   Decompositions{ii+size(sysFF,1),1} = sysTF{ii,1}.X_DIMS_FREE;
+   Decompositions{ii+size(sysFF,1),2} = 2;
+end
+
+for ii=1:1:size(sysDec,1)
+   V_decomposition_err = [V_decomposition_err; mean(abs(sysDec{ii,1}.V_LQR(valid_range) - sys_joint.V_LQR(valid_range)))];
+   V_err_DP = [V_err_DP; mean(abs(sysDec{ii,1}.V_DP(valid_range) - sys_joint.V_DP(valid_range)))];
+   V_err_DP_bounded = [V_err_DP_bounded; mean(abs(sysDec{ii,1}.V_DP_bounded(valid_range) - sys_joint.V_DP_bounded(valid_range)))];
+   Decompositions{ii+size(sysFF,1)+size(sysTF,1),1} = sysDec{ii,1}.X_DIMS_FREE;
+   Decompositions{ii+size(sysFF,1)+size(sysTF,1),2} = 3;
+end
+
+% V_decomposition_var = abs(V_err_DP - V_decomposition_err);
+% V_decomposition_var_bounded = abs(V_err_DP_bounded - V_decomposition_err);
+V_decomposition_var = (V_err_DP - V_decomposition_err);
+V_decomposition_var_bounded = (V_err_DP_bounded - V_decomposition_err);
+
+[V_decomposition_err_sorted, V_decomposition_err_order] = sort(V_decomposition_err);
+for nn=1:1:size(V_decomposition_err, 1)
+    decomp = Decompositions{V_decomposition_err_order(nn),1};
+    decomptype = Decompositions{V_decomposition_err_order(nn),2};
+    disp(strcat(num2str(decomp'), ', (', num2str(decomptype),'), Err : ', num2str(V_decomposition_err_sorted(nn)), ', Var : ', num2str(V_decomposition_var(V_decomposition_err_order(nn))), ', Var (bounded) : ', num2str(V_decomposition_var_bounded(V_decomposition_err_order(nn)))));
 end
 
 function val_grid = computeValueGrid(S, l_point, varargin)

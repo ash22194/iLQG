@@ -22,8 +22,8 @@ sys.R = [0.001, 0;
          0, 0.001];
 sys.goal = [0; 0; pi; 0];
 sys.l_point = [0; 0; pi; 0];
-sys.lims = [-9, 9;
-            -9, 9];
+sys.lims = [-6, 6;
+            -6, 6];
 % Optimization parameters
 Op.lims  = sys.lims;
 Op.maxIter = 500;
@@ -44,38 +44,10 @@ for ii=1:1:size(cart_starts, 2)
     end
 end
 
+%% Cascaded
+
 X_DIMS = [1;2;3;4];
 U_DIMS = [1;2];
-
-%% Joint
-sysJoint = sys;
-sysJoint.X_DIMS_FREE = X_DIMS;
-sysJoint.X_DIMS_FIXED = [];
-sysJoint.U_DIMS_FREE = U_DIMS;
-sysJoint.U_DIMS_FIXED = [];
-Op.lims = sysJoint.lims(sysJoint.U_DIMS_FREE,:);
-
-sysJoint.Xn = zeros(4, NUM_CTRL+1, size(x_starts, 2));
-sysJoint.Cn = zeros(1, NUM_CTRL+1, size(x_starts, 2));
-sysJoint.Un = zeros(length(sysJoint.U_DIMS_FREE), NUM_CTRL+1, size(x_starts, 2));
-sysJoint.Kn = zeros(length(sysJoint.U_DIMS_FREE), 4, NUM_CTRL+1, size(x_starts, 2));
-sysJoint.timen = zeros(size(x_starts, 2), 1);
-
-dynJoint = @(x, u, i) cartpole_dyn_first_cst(sysJoint, x, u, sysJoint.full_DDP);
-for jj=1:1:size(x_starts, 2)
-
-    tic;
-    [sysJoint.Xn(sysJoint.X_DIMS_FREE, :, jj), ...
-     sysJoint.Un(:, 1:NUM_CTRL, jj), ...
-     sysJoint.Kn(:, sysJoint.X_DIMS_FREE, 1:NUM_CTRL, jj), ...
-     ~, ~, sysJoint.Cn(:, :, jj)] = iLQG(dynJoint, ...
-                                    x_starts(sysJoint.X_DIMS_FREE, jj), ...
-                                    zeros(length(sysJoint.U_DIMS_FREE), NUM_CTRL), Op);
-    sysJoint.timen(jj) = toc;
-    disp(strcat("Joint, Trajectory :", num2str(jj)));
-end
-
-%% Cascaded
 
 sysFF = cell(2^length(X_DIMS) - 1, 1);
 sysTS = cell(2^length(X_DIMS) - 1, 1);
@@ -100,7 +72,7 @@ for kk=1:4
         sysFF_.Kn = zeros(length(sysFF_.U_DIMS_FREE), 4, NUM_CTRL+1, size(x_starts, 2));
         sysFF_.timen = zeros(size(x_starts, 2), 1);
 
-        dynFF = @(x, u, i) cartpole_dyn_first_cst(sysFF_, x, u, sysFF_.full_DDP);
+        dynFF = @(x, u, i) cartpole_dyn_first_wraparound_cst(sysFF_, x, u, sysFF_.full_DDP);
         for jj=1:1:size(x_starts, 2)
 
             tic;
@@ -135,7 +107,7 @@ for kk=1:4
         sysTS_.timen = zeros(size(x_starts, 2), 1);
 
         dynTS = @(x, u, k, K, xn, i) ...
-                   cartpole_dyn_second_cst(sysTS_, x, u, k, K, xn, sysTS_.full_DDP);
+                   cartpole_dyn_second_wraparound_cst(sysTS_, x, u, k, K, xn, sysTS_.full_DDP);
         for jj=1:1:size(x_starts, 2)
 
             tic;
@@ -183,7 +155,7 @@ for kk=1:4
         sysTF_.Kn = zeros(length(sysTF_.U_DIMS_FREE), 4, NUM_CTRL+1, size(x_starts, 2));
         sysTF_.timen = zeros(size(x_starts, 2), 1);
 
-        dynTF = @(x, u, i) cartpole_dyn_first_cst(sysTF_, x, u, sysTF_.full_DDP);
+        dynTF = @(x, u, i) cartpole_dyn_first_wraparound_cst(sysTF_, x, u, sysTF_.full_DDP);
         for jj=1:1:size(x_starts, 2)
 
             tic;
@@ -218,7 +190,7 @@ for kk=1:4
         sysFS_.timen = zeros(size(x_starts, 2), 1);
 
         dynFS = @(x, u, k, K, xn, i) ...
-                   cartpole_dyn_second_cst(sysFS_, x, u, k, K, xn, sysFS_.full_DDP);
+                   cartpole_dyn_second_wraparound_cst(sysFS_, x, u, k, K, xn, sysFS_.full_DDP);
         for jj=1:1:size(x_starts, 2)
 
             tic;
@@ -243,4 +215,5 @@ for kk=1:4
     numCompleted = numCompleted + size(C, 1);
 end
 
-save(strcat('data/iLQGCartPoleAllPossibleDecomposed_alpha_',num2str(Op.Alpha),'_gamma_',num2str(sys.gamma_),'mc=',num2str(sys.mc),',mp=',num2str(sys.mp),'.mat'));
+save(strcat('data/iLQGCartPoleWraparoundAllPossibleDecomposed_alpha_',num2str(Op.Alpha),'_gamma_',num2str(sys.gamma_),'mc=',num2str(sys.mc),',mp=',num2str(sys.mp),'lowlimits.mat'));
+

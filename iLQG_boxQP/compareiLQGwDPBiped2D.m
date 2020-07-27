@@ -5,7 +5,7 @@ close all;
 %%
 addpath('biped2d');
 iLQG_dir = 'data/';
-iLQG_filenames = ["iLQGBiped2DDecomposed_newerthetastarts_corrlin_all8.mat";
+iLQG_filenames = ["iLQGBiped2DDecomposed_cornerstart_all8.mat";
                   ];
 x_starts = [];
 
@@ -336,8 +336,7 @@ trajXPFCTErr = trajXPFCT(:, end, :) - sys.goal;
 DP_longhorz_finalerr(:, 5) = reshape(vecnorm(trajXPFCTErr), size(x_starts,2), 1);
 
 disp('Dec 5');
-policyFullFFullT(:,:,:,:,:,:,1:2) = paramsDec2F.policy;
-policyFullFFullT(:,:,:,:,:,:,3:4) = paramsDec2S.policy;
+policyFullFFullT = paramsDec2S.policy;
 [trajXFFFT, trajUFFFT, J_DP_rollout(:,6)] = rolloutDPTrajOde(policyFullFFullT, x_starts, sys, limits, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, T);
 trajXFFFTErr = trajXFFFT(:, end, :) - sys.goal;
 DP_finalerr(:, 6) = reshape(vecnorm(trajXFFFTErr), size(x_starts,2), 1);
@@ -347,8 +346,7 @@ trajXFFFTErr = trajXFFFT(:, end, :) - sys.goal;
 DP_longhorz_finalerr(:, 6) = reshape(vecnorm(trajXFFFTErr), size(x_starts,2), 1);
 
 disp('Dec 6');
-policyFullTFullF(:,:,:,:,:,:,1:2) = paramsDec1S.policy;
-policyFullTFullF(:,:,:,:,:,:,3:4) = paramsDec1F.policy;
+policyFullTFullF = paramsDec1S.policy;
 [trajXFTFF, trajUFTFF, J_DP_rollout(:,7)] = rolloutDPTrajOde(policyFullTFullF, x_starts, sys, limits, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, T);
 trajXFTFFErr = trajXFTFF(:, end, :) - sys.goal;
 DP_finalerr(:, 7) = reshape(vecnorm(trajXFTFFErr), size(x_starts,2), 1);
@@ -390,16 +388,16 @@ J_DP = nan(size(x_starts, 2), 9);
 J_DP(:, 1) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_joint, ...
                      x_starts(1,:)', x_starts(2,:)', x_starts(3,:)', x_starts(4,:)', x_starts(5,:)', x_starts(6,:)');
                  
-J_DP(:, 2) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_t_pole_second, ...
+J_DP(:, 2) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_T_Torso_second, ...
                      x_starts(1,:)', x_starts(2,:)', x_starts(3,:)', x_starts(4,:)', x_starts(5,:)', x_starts(6,:)');
 
-J_DP(:, 3) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_f_cart_second, ...
+J_DP(:, 3) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_F_COM_second, ...
                      x_starts(1,:)', x_starts(2,:)', x_starts(3,:)', x_starts(4,:)', x_starts(5,:)', x_starts(6,:)');
 
-J_DP(:, 4) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_f_pole_second, ...
+J_DP(:, 4) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_F_Torso_second, ...
                      x_starts(1,:)', x_starts(2,:)', x_starts(3,:)', x_starts(4,:)', x_starts(5,:)', x_starts(6,:)');
 
-J_DP(:, 5) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_t_cart_second, ...
+J_DP(:, 5) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_T_COM_second, ...
                      x_starts(1,:)', x_starts(2,:)', x_starts(3,:)', x_starts(4,:)', x_starts(5,:)', x_starts(6,:)');
                      
 J_DP(:, 6) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, paramsDec2S.V, ...
@@ -408,10 +406,10 @@ J_DP(:, 6) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_do
 J_DP(:, 7) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, paramsDec1S.V, ...
                      x_starts(1,:)', x_starts(2,:)', x_starts(3,:)', x_starts(4,:)', x_starts(5,:)', x_starts(6,:)');
 
-J_DP(:, 8) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_f_cart_t_pole, ...
+J_DP(:, 8) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_F_COM_T_Torso, ...
                      x_starts(1,:)', x_starts(2,:)', x_starts(3,:)', x_starts(4,:)', x_starts(5,:)', x_starts(6,:)');
 
-J_DP(:, 9) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_t_cart_f_pole, ...
+J_DP(:, 9) = interpn(grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot, V_T_COM_F_Torso, ...
                      x_starts(1,:)', x_starts(2,:)', x_starts(3,:)', x_starts(4,:)', x_starts(5,:)', x_starts(6,:)');
 
 %% Ordering
@@ -430,85 +428,13 @@ DP_rollout_err = sum(abs(J_DP_rollout(:,1) - J_DP_rollout(:,2:end)));
 DP_longhorz_rollout_err = sum(abs(J_DP_longhorz_rollout(:,1) - J_DP_longhorz_rollout(:,2:end)));
 [~,DP_longhorz_rollout_order] = sort(DP_longhorz_rollout_err);
 
-%% Compare trajectories
-linew = 2;
-% trajIDs = [1, 2, 5, 7, 11, 12, 13, 18, 19, 24, 25, 26, 31, 32, 33, 38, 39, 44, 45, 46, 49, 50, 51, 52, 55, 56];
-trajIDs = find(~DP_converged(:,1));
-% for jj=1:1:size(x_starts, 2)
-for ii=1:1:length(trajIDs)
-    jj = trajIDs(ii);
-    
-    figure;
-    subplot(2,1,1);
-    hold on;
-    % plot DDP trajectories
-    plot(XJoint(1,:,jj),XJoint(2,:,jj),'Color',[0.4660 0.6740 0.1880], 'LineWidth', linew);
-    plot(XTorsoTS(1,:,jj),XTorsoTS(2,:,jj),'Color',[0 0.4470 0.7410], 'LineWidth', linew);
-    plot(XCOMFS(1,:,jj),XCOMFS(2,:,jj),'Color',[0.8500 0.3250 0.0980], 'LineWidth', linew);
-%     plot(XTorsoFS(1,:,jj),XTorsoFS(2,:,jj),'Color',[0.9290 0.6940 0.1250], 'LineWidth', linew);
-%     plot(XCOMTS(1,:,jj),XCOMTS(2,:,jj),'Color',[0.4940 0.1840 0.5560], 'LineWidth', linew);
-    plot(XCOMFTorsoTDec(1,:,jj), XCOMFTorsoTDec(2,:,jj), 'Color', [0.3010 0.7450 0.9330], 'LineWidth', linew);
-%     plot(XCOMTTorsoFDec(1,:,jj), XCOMTTorsoFDec(2,:,jj), 'Color', [0.6350 0.0780 0.1840], 'LineWidth', linew);
-    % plot DP trajectories
-    plot(trajXJoint(1,:,jj), trajXJoint(2,:,jj),'Color',[0.4660 0.6740 0.1880], 'LineStyle', '-.', 'LineWidth', linew);
-    plot(trajXCFPT(1,:,jj), trajXCFPT(2,:,jj),'Color',[0 0.4470 0.7410], 'LineStyle', '-.', 'LineWidth', linew);
-    plot(trajXPTCF(1,:,jj), trajXPTCF(2,:,jj),'Color',[0.8500 0.3250 0.0980], 'LineStyle', '-.', 'LineWidth', linew);
-%     plot(trajXCTPF(1,:,jj), trajXCTPF(2,:,jj),'Color',[0.9290 0.6940 0.1250], 'LineStyle', '-.', 'LineWidth', linew);
-%     plot(trajXPFCT(1,:,jj), trajXPFCT(2,:,jj),'Color',[0.4940 0.1840 0.5560], 'LineStyle', '-.', 'LineWidth', linew);
-    plot(trajXCFPTD(1,:,jj), trajXCFPTD(2,:,jj), 'Color', [0.3010 0.7450 0.9330], 'LineStyle', '-.', 'LineWidth', linew);
-%     plot(trajXCTPFD(1,:,jj), trajXCTPFD(2,:,jj), 'Color', [0.6350 0.0780 0.1840], 'LineStyle', '-.', 'LineWidth', linew);
-    
-    legend(["Joint (DDP)", "F - COM, T - Both (DDP)", "T - Torso, F - Both (DDP)", ... % "T - COM, F - Both (DDP)", "F - Torso, T - Both (DDP)", ...
-            "F - COM, T - Torso (DDP)", ... % "T - COM, F - Torso (DDP)", ...
-            "Joint (DP)", "F - COM, T - Both (DP)", "T - Torso, F - Both (DP)", ... % "T - COM, F - Both (DP)", "F - Torso, T - Both (DP)", ...
-            "F - COM, T - Torso (DP)", ... %"T - COM, F - Torso (DP)", ...
-            ]);
-    scatter(XJoint(1,1,jj),XJoint(2,1,jj), 20, [1,0,0]);
-    xlabel('x');
-    ylabel('x-dot');
-    xlim([-1,1])
-    ylim([-1.5,1.5])
-    hold off;
-    
-    subplot(2,1,2);
-    hold on;
-    % plot DDP trajectories
-    plot(XJoint(3,:,jj), XJoint(4,:,jj),'Color',[0.4660 0.6740 0.1880], 'LineWidth', linew);
-    plot(XTorsoTS(3,:,jj), XTorsoTS(4,:,jj),'Color',[0 0.4470 0.7410], 'LineWidth', linew);
-    plot(XCOMFS(3,:,jj), XCOMFS(4,:,jj),'Color',[0.8500 0.3250 0.0980], 'LineWidth', linew);
-%     plot(XTorsoFS(3,:,jj), XTorsoFS(4,:,jj),'Color',[0.9290 0.6940 0.1250], 'LineWidth', linew);
-%     plot(XCOMTS(3,:,jj), XCOMTS(4,:,jj),'Color',[0.4940 0.1840 0.5560], 'LineWidth', linew);
-    plot(XCOMFTorsoTDec(3,:,jj), XCOMFTorsoTDec(4,:,jj), 'Color', [0.3010 0.7450 0.9330], 'LineWidth', linew);
-%     plot(XCOMTTorsoFDec(3,:,jj), XCOMTTorsoFDec(4,:,jj), 'Color', [0.6350 0.0780 0.1840], 'LineWidth', linew);
-    % plot DP trajectories
-    plot(trajXJoint(3,:,jj), trajXJoint(4,:,jj),'Color',[0.4660 0.6740 0.1880], 'LineStyle', '-.', 'LineWidth', linew);
-    plot(trajXCFPT(3,:,jj), trajXCFPT(4,:,jj),'Color',[0 0.4470 0.7410], 'LineStyle', '-.', 'LineWidth', linew);
-    plot(trajXPTCF(3,:,jj), trajXPTCF(4,:,jj),'Color',[0.8500 0.3250 0.0980], 'LineStyle', '-.', 'LineWidth', linew);
-%     plot(trajXCTPF(3,:,jj), trajXCTPF(4,:,jj),'Color',[0.9290 0.6940 0.1250], 'LineStyle', '-.', 'LineWidth', linew);
-%     plot(trajXPFCT(3,:,jj), trajXPFCT(4,:,jj),'Color',[0.4940 0.1840 0.5560], 'LineStyle', '-.', 'LineWidth', linew);
-    plot(trajXCFPTD(3,:,jj), trajXCFPTD(4,:,jj), 'Color', [0.3010 0.7450 0.9330], 'LineStyle', '-.', 'LineWidth', linew);
-%     plot(trajXCTPFD(3,:,jj), trajXCTPFD(4,:,jj), 'Color', [0.6350 0.0780 0.1840], 'LineStyle', '-.', 'LineWidth', linew);
-    
-    legend(["Joint (DDP)", "F - COM, T - Both (DDP)", "T - Torso, F - Both (DDP)", ... % "T - COM, F - Both (DDP)", "F - Torso, T - Both (DDP)", ...
-            "F - COM, T - Torso (DDP)", ... % "T - COM, F - Torso (DDP)", ...
-            "Joint (DP)", "F - COM, T - Both (DP)", "T - Torso, F - Both (DP)", ... % "T - COM, F - Both (DP)", "F - Torso, T - Both (DP)", ...
-            "F - COM, T - Torso (DP)", ... %"T - COM, F - Torso (DP)", ...
-            ]);
-    scatter(XJoint(3,1,jj),XJoint(4,1,jj),20,[1,0,0]);
-    xlabel('theta');
-    ylabel('theta-dot');
-    xlim([pi, 3*pi])
-    ylim([-3, 3])
-    hold off;
-end
-
 %% DP Value function comparison within state bounds
 
-state_bounds = [-0.92, 1;
+state_bounds = [0.95, 1;
                 pi/2 + 0.3, pi/2 + 0.4;
                 -0.1, 0.1;
-                -0.4, -0.3;
-                -0.4, 0.4;
+                -0.3, 0.3;
+                -0.2, 0.2;
                 -0.2, 0.2];
 
 valid_range = ((grid_l >= state_bounds(1,1)) & (grid_l <= state_bounds(1,2)) ...
@@ -529,13 +455,76 @@ DP_avg_err = [sum(abs(V_joint(valid_range) - V_T_Torso_second(valid_range)), 'al
 
 [~, DP_avg_order] = sort(DP_avg_err);
 
-%% Inidividual test
+%% LQR comparison
 
-% [tXJ, tUJ, J, JW] = rolloutDPTrajOde(policy_joint, x_starts(:,1), sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T);
-% [tXJL, tUJL, JL, JWL] = rolloutDPTrajOde(policy_joint, x_starts(:,1), sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T_longhorz);
-% [tXJLL, tUJLL, JLL, JWLL] = rolloutDPTrajOde(policy_joint, x_starts(:,1), sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, 2*T_longhorz);
-% [tXJLLL, tUJLLL, JLLL, JWLLL] = rolloutDPTrajOde(policy_joint, x_starts(:,1), sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, 4*T_longhorz);
-% [tXJLLLL, tUJLLLL, JLLLL, JWLLLL] = rolloutDPTrajOde(policy_joint, x_starts(:,1), sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, 32*T_longhorz);
+load(strcat(iLQG_dir, iLQG_filenames(1)), 'S_joint', 'S_TorsoTS', 'S_COMFS', 'S_TorsoFS', 'S_COMTS', 'S_TSFull', 'S_FSFull', 'K_COMFF', 'K_COMTF', 'K_TorsoFF', 'K_TorsoTF', 'A', 'B', 'lambda_', 'sys');
+
+V_LQR_joint = computeValueGrid(S_joint, sys.l_point, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot);
+
+if (any(eig(S_TorsoTS) < 0))
+    V_LQR_T_Torso_second = inf(size(grid_l));
+else
+    V_LQR_T_Torso_second = computeValueGrid(S_TorsoTS, sys.l_point, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot);
+end
+
+if (any(eig(S_COMFS) < 0))
+    V_LQR_F_COM_second = inf(size(grid_l));
+else
+    V_LQR_F_COM_second = computeValueGrid(S_COMFS, sys.l_point, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot);
+end
+
+if (any(eig(S_TorsoFS) < 0))
+    V_LQR_F_Torso_second = inf(size(grid_l));
+else
+    V_LQR_F_Torso_second = computeValueGrid(S_TorsoFS, sys.l_point, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot);
+end
+
+if (any(eig(S_COMTS) < 0))
+    V_LQR_T_COM_second = inf(size(grid_l));
+else
+    V_LQR_T_COM_second = computeValueGrid(S_COMTS, sys.l_point, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot);
+end
+
+if (any(eig(S_TSFull) < 0))
+    V_LQR_T_Full_second = inf(size(grid_l));
+else
+    V_LQR_T_Full_second = computeValueGrid(S_TSFull, sys.l_point, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot);
+end
+
+if (any(eig(S_FSFull) < 0))
+    V_LQR_F_Full_second = inf(size(grid_l));
+else
+    V_LQR_F_Full_second = computeValueGrid(S_FSFull, sys.l_point, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot);
+end
+
+K_F_COM_T_Torso = [K_COMFF; K_TorsoTF];
+S_F_COM_T_Torso = lyap((A - B*K_F_COM_T_Torso - lambda_/2*eye(size(A,1)))',...
+                        K_F_COM_T_Torso'*sys.R*K_F_COM_T_Torso + sys.Q);
+if (any(eig(S_F_COM_T_Torso) < 0))
+    V_LQR_F_COM_T_Torso = inf(size(grid_l));
+else
+    V_LQR_F_COM_T_Torso = computeValueGrid(S_F_COM_T_Torso, sys.l_point, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot);
+end
+
+K_T_COM_F_Torso = [K_TorsoFF; K_COMTF];
+S_T_COM_F_Torso = lyap((A - B*K_T_COM_F_Torso - lambda_/2*eye(size(A,1)))',...
+                        K_T_COM_F_Torso'*sys.R*K_T_COM_F_Torso + sys.Q);
+if (any(eig(S_T_COM_F_Torso) < 0))
+    V_LQR_T_COM_F_Torso = inf(size(grid_l));
+else
+    V_LQR_T_COM_F_Torso = computeValueGrid(S_T_COM_F_Torso, sys.l_point, grid_l, grid_a, grid_x_dot, grid_z_dot, grid_th, grid_th_dot);
+end
+
+LQR_avg_err = [sum(abs(V_LQR_joint(valid_range) - V_LQR_T_Torso_second(valid_range)), 'all'), ... 
+              sum(abs(V_LQR_joint(valid_range) - V_LQR_F_COM_second(valid_range)), 'all'), ...
+              sum(abs(V_LQR_joint(valid_range) - V_LQR_F_Torso_second(valid_range)), 'all'), ...
+              sum(abs(V_LQR_joint(valid_range) - V_LQR_T_COM_second(valid_range)), 'all'), ...
+              sum(abs(V_LQR_joint(valid_range) - V_LQR_T_Full_second(valid_range)), 'all'), ...
+              sum(abs(V_LQR_joint(valid_range) - V_LQR_F_Full_second(valid_range)), 'all'), ...
+              sum(abs(V_LQR_joint(valid_range) - V_LQR_F_COM_T_Torso(valid_range)), 'all'), ...
+              sum(abs(V_LQR_joint(valid_range) - V_LQR_T_COM_F_Torso(valid_range)), 'all')];
+
+[~, LQR_avg_order] = sort(LQR_avg_err);
 
 %% Functions
 function [trajX, trajU, J, J_WrapAround] = rolloutDPTraj(policy, x_starts, sys, limits, grid_x, grid_x_dot, grid_xP, grid_xP_dot, T)
@@ -596,4 +585,19 @@ function [trajX, trajU, J] = rolloutDPTrajOde(policy, x_starts, sys, limits, gri
         disp(strcat('start : ', num2str(jj)));
     end
     
+end
+
+function val_grid = computeValueGrid(S, l_point, varargin)
+    
+    assert(size(S,1)==size(S,2), 'S must be square');
+    assert(size(S,1)==(nargin-2), 'Must provide as many grid matrices as dimensions');
+    assert(length(l_point)==size(S,1), 'Check l_point dimension');
+    
+    val_grid = zeros(size(varargin{1}));
+    
+    for i=1:1:size(S,1)
+        for j=1:1:size(S,1)
+            val_grid = val_grid + (varargin{i} - l_point(i)).*(varargin{j} - l_point(j))*S(i,j);
+        end
+    end
 end

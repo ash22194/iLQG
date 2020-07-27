@@ -74,13 +74,13 @@ Op.gamma_ = sys.gamma_;
 % Op.Alpha = [1];
 
 % Define starts
-com_pos = [0.92, 0.92, 1.0, 1.0;
+com_pos = [0.95, 0.95, 1.0, 1.0;
            0.4,  0.3, 0.4, 0.3];
 com_pos(2,:) = pi/2 + com_pos(2,:);
 com_vel = [ 0.1, -0.1, 0.1, -0.1;
-           -0.3, -0.3, -0.4, -0.4];
-theta_starts = [-0.2,  -0.1, 0.1, 0.2;
-                   0,     0,   0,   0];
+           -0.3, -0.3, 0.3, 0.3];
+theta_starts = [-0.2,  -0.2, 0.2,  0.2;
+                -0.2,   0.2, -0.2, 0.2];
 
 x_starts = nan(6, size(com_pos,2)*size(com_vel,2)*size(theta_starts,2));
 com_starts = nan(4, size(com_pos,2)*size(com_vel,2));
@@ -101,7 +101,7 @@ end
 % theta_starts = theta_starts(:,1);
 
 save_dir = "data/";
-save_file = strcat("iLQGBiped2DDecomposed_newerthetastarts_corrlin_all8");
+save_file = strcat("iLQGBiped2DDecomposed_cornerstart_all8");
 
 %% Joint
 [K_joint, S_joint, e_joint] = lqr(A - lambda_/2*eye(size(A,1)), B, ...
@@ -132,6 +132,9 @@ for jj=1:1:size(x_starts, 2)
     for ii=1:1:NUM_CTRL
         UJointinit(:,ii, jj) = min(max(sys_joint.u0 - K_joint*(XJointinit(:,ii, jj) - sys_joint.goal), sys_joint.lims(:,1)), sys_joint.lims(:,2));
         XJointinit(:,ii+1, jj) = f_Biped2DFirst_finite(sys_joint, XJointinit(:,ii, jj), UJointinit(:,ii, jj), sys_joint.dt);
+        if (any(isnan(UJointinit(:,ii, jj))) || any(isnan(XJointinit(:,ii, jj))))
+            disp('Check X, U Joint');
+        end
         CostJointinit(jj) = CostJointinit(jj) + discount*l_Biped2DFirst(sys_joint, XJointinit(:,ii, jj), UJointinit(:,ii, jj) - sys_joint.u0)*sys_joint.dt;
         discount = discount*sys_joint.gamma_;
     end
@@ -194,6 +197,9 @@ for jj=1:1:size(x_starts, 2)
     for ii=1:1:NUM_CTRL
         UFFullinit(:,ii, jj) = min(max(u0 - K_FFull*(XFFullinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
         XFFullinit(:,ii+1, jj) = f_Biped2DFirst_finite(sys_FFull, XFFullinit(:,ii, jj), UFFullinit(:,ii, jj), sys_FFull.dt);
+        if (any(isnan(UFFullinit(:,ii, jj))) || any(isnan(XFFullinit(:,ii, jj))))
+            disp('Check X, U FFull');
+        end
         CostFFullinit(jj) = CostFFullinit(jj) + discount*l_Biped2DFirst(sys_FFull, XFFullinit(:,ii, jj), UFFullinit(:,ii, jj) - u0)*sys_FFull.dt;
         discount = discount*sys_FFull.gamma_;
     end
@@ -253,6 +259,9 @@ for jj=1:1:size(x_starts, 2)
     for ii=1:1:NUM_CTRL
         UTSFullinit(:,ii, jj) = min(max(u0Free - K_TSFull*(XTSFullinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
         XTSFullinit(:,ii+1, jj) = f_Biped2DSecond_finite(sys_TSFull, XTSFullinit(:,ii, jj), UTSFullinit(:,ii, jj), u0Fixed, -K_FFull, sys_FFull.goal, sys_TSFull.dt);
+        if (any(isnan(UTSFullinit(:,ii, jj))) || any(isnan(XTSFullinit(:,ii, jj))))
+            disp('Check X, U TSFull');
+        end
         CostTSFullinit(jj) = CostTSFullinit(jj) + discount*l_Biped2DSecond(sys_TSFull, XTSFullinit(:,ii, jj), UTSFullinit(:,ii, jj) - u0Free, zeros(length(u0Fixed),1), -K_FFull, sys_FFull.goal)*sys_TSFull.dt;
         discount = discount*sys_TSFull.gamma_;
     end
@@ -322,6 +331,9 @@ for jj=1:1:size(x_starts, 2)
     for ii=1:1:NUM_CTRL
         UTFullinit(:,ii, jj) = min(max(u0 - K_TFull*(XTFullinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
         XTFullinit(:,ii+1, jj) = f_Biped2DFirst_finite(sys_TFull, XTFullinit(:,ii, jj), UTFullinit(:,ii, jj), sys_TFull.dt);
+        if (any(isnan(UTFullinit(:,ii, jj))) || any(isnan(XTFullinit(:,ii, jj))))
+            disp('Check X, U TFull');
+        end
         CostTFullinit(jj) = CostTFullinit(jj) + discount*l_Biped2DFirst(sys_TFull, XTFullinit(:,ii, jj), UTFullinit(:,ii, jj) - u0)*sys_TFull.dt;
         discount = discount*sys_TFull.gamma_;
     end
@@ -381,6 +393,9 @@ for jj=1:1:size(x_starts, 2)
     for ii=1:1:NUM_CTRL
         UFSFullinit(:,ii, jj) = min(max(u0Free - K_FSFull*(XFSFullinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
         XFSFullinit(:,ii+1, jj) = f_Biped2DSecond_finite(sys_FSFull, XFSFullinit(:,ii, jj), UFSFullinit(:,ii, jj), u0Fixed, -K_TFull, sys_TFull.goal, sys_FSFull.dt);
+        if (any(isnan(UFSFullinit(:,ii, jj))) || any(isnan(XFSFullinit(:,ii, jj))))
+            disp('Check X, U FSFull');
+        end
         CostFSFullinit(jj) = CostFSFullinit(jj) + discount*l_Biped2DSecond(sys_FSFull, XFSFullinit(:,ii, jj), UFSFullinit(:,ii, jj) - u0Free, zeros(length(u0Fixed),1), -K_TFull, sys_TFull.goal)*sys_FSFull.dt;
         discount = discount*sys_FSFull.gamma_;
     end
@@ -453,6 +468,9 @@ for jj=1:1:size(com_starts, 2)
     for ii=1:1:NUM_CTRL
         UCOMFFinit(:,ii, jj) = min(max(u0 - K_COMFF*(XCOMFFinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
         XCOMFFinit(:,ii+1, jj) = f_Biped2DFirst_finite(sys_COMFF, XCOMFFinit(:,ii, jj), UCOMFFinit(:,ii, jj), sys_COMFF.dt);
+        if (any(isnan(UCOMFFinit(:,ii, jj))) || any(isnan(XCOMFFinit(:,ii, jj))))
+            disp('Check X, U COMFF');
+        end
         CostCOMFFinit(jj) = CostCOMFFinit(jj) + discount*l_Biped2DFirst(sys_COMFF, XCOMFFinit(:,ii, jj), UCOMFFinit(:,ii, jj) - u0)*sys_COMFF.dt;
         discount = discount*sys_COMFF.gamma_;
     end
@@ -515,6 +533,9 @@ for jj=1:1:size(x_starts, 2)
     for ii=1:1:NUM_CTRL
         UTorsoTSinit(:,ii, jj) = min(max(u0Free - K_TorsoTS*(XTorsoTSinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
         XTorsoTSinit(:,ii+1, jj) = f_Biped2DSecond_finite(sys_TorsoTS, XTorsoTSinit(:,ii, jj), UTorsoTSinit(:,ii, jj), u0Fixed, -K_COMFF, sys_COMFF.goal, sys_TorsoTS.dt);
+        if (any(isnan(UTorsoTSinit(:,ii, jj))) || any(isnan(XTorsoTSinit(:,ii, jj))))
+            disp('Check X, U TorsoTS');
+        end
         CostTorsoTSinit(jj) = CostTorsoTSinit(jj) + discount*l_Biped2DSecond(sys_TorsoTS, XTorsoTSinit(:,ii, jj), UTorsoTSinit(:,ii, jj) - u0Free, zeros(length(u0Fixed),1), -K_COMFF, sys_COMFF.goal)*sys_TorsoTS.dt;
         discount = discount*sys_TorsoTS.gamma_;
     end
@@ -586,6 +607,9 @@ for jj=1:1:size(theta_starts, 2)
     for ii=1:1:NUM_CTRL
         UTorsoTFinit(:,ii, jj) = min(max(u0 - K_TorsoTF*(XTorsoTFinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
         XTorsoTFinit(:,ii+1, jj) = f_Biped2DFirst_finite(sys_TorsoTF, XTorsoTFinit(:,ii, jj), UTorsoTFinit(:,ii, jj), sys_TorsoTF.dt);
+        if (any(isnan(UTorsoTFinit(:,ii, jj))) || any(isnan(XTorsoTFinit(:,ii, jj))))
+            disp('Check X, U TorsoTF');
+        end
         CostTorsoTFinit(jj) = CostTorsoTFinit(jj) + discount*l_Biped2DFirst(sys_TorsoTF, XTorsoTFinit(:,ii, jj), UTorsoTFinit(:,ii, jj) - u0)*sys_TorsoTF.dt;
         discount = discount*sys_TorsoTF.gamma_;
     end
@@ -647,6 +671,9 @@ for jj=1:1:size(x_starts, 2)
     for ii=1:1:NUM_CTRL
         UCOMFSinit(:,ii, jj) = min(max(u0Free - K_COMFS*(XCOMFSinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
         XCOMFSinit(:,ii+1, jj) = f_Biped2DSecond_finite(sys_COMFS, XCOMFSinit(:,ii, jj), UCOMFSinit(:,ii, jj), u0Fixed, -K_TorsoTF, sys_TorsoTF.goal, sys_COMFS.dt);
+        if (any(isnan(UCOMFSinit(:,ii, jj))) || any(isnan(XCOMFSinit(:,ii, jj))))
+            disp('Check X, U COMFS');
+        end
         CostCOMFSinit(jj) = CostCOMFSinit(jj) + discount*l_Biped2DSecond(sys_COMFS, XCOMFSinit(:,ii, jj), UCOMFSinit(:,ii, jj) - u0Free, zeros(length(u0Fixed),1), -K_TorsoTF, sys_TorsoTF.goal)*sys_COMFS.dt;
         discount = discount*sys_COMFS.gamma_;
     end
@@ -717,6 +744,9 @@ for jj=1:1:size(com_starts, 2)
     for ii=1:1:NUM_CTRL
         UCOMTFinit(:,ii, jj) = min(max(u0 - K_COMTF*(XCOMTFinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
         XCOMTFinit(:,ii+1, jj) = f_Biped2DFirst_finite(sys_COMTF, XCOMTFinit(:,ii, jj), UCOMTFinit(:,ii, jj), sys_COMTF.dt);
+        if (any(isnan(UCOMTFinit(:,ii, jj))) || any(isnan(XCOMTFinit(:,ii, jj))))
+            disp('Check X, U COMTF');
+        end
         CostCOMTFinit(jj) = CostCOMTFinit(jj) + discount*l_Biped2DFirst(sys_COMTF, XCOMTFinit(:,ii, jj), UCOMTFinit(:,ii, jj) - u0)*sys_COMTF.dt;
         discount = discount*sys_COMTF.gamma_;
     end
@@ -779,6 +809,9 @@ for jj=1:1:size(x_starts, 2)
     for ii=1:1:NUM_CTRL
         UTorsoFSinit(:,ii, jj) = min(max(u0Free - K_TorsoFS*(XTorsoFSinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
         XTorsoFSinit(:,ii+1, jj) = f_Biped2DSecond_finite(sys_TorsoFS, XTorsoFSinit(:,ii, jj), UTorsoFSinit(:,ii, jj), u0Fixed, -K_COMTF, sys_COMTF.goal, sys_TorsoFS.dt);
+        if (any(isnan(UTorsoFSinit(:,ii, jj))) || any(isnan(XTorsoFSinit(:,ii, jj))))
+            disp('Check X, U TorsoFS');
+        end
         CostTorsoFSinit(jj) = CostTorsoFSinit(jj) + discount*l_Biped2DSecond(sys_TorsoFS, XTorsoFSinit(:,ii, jj), UTorsoFSinit(:,ii, jj) - u0Free, zeros(length(u0Fixed),1), -K_COMTF, sys_COMTF.goal)*sys_TorsoFS.dt;
         discount = discount*sys_TorsoFS.gamma_;
     end
@@ -849,6 +882,9 @@ for jj=1:1:size(theta_starts, 2)
     for ii=1:1:NUM_CTRL
         UTorsoFFinit(:,ii, jj) = min(max(u0 - K_TorsoFF*(XTorsoFFinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));
         XTorsoFFinit(:,ii+1, jj) = f_Biped2DFirst_finite(sys_TorsoFF, XTorsoFFinit(:,ii, jj), UTorsoFFinit(:,ii, jj), sys_TorsoFF.dt);
+        if (any(isnan(UTorsoFFinit(:,ii, jj))) || any(isnan(XTorsoFFinit(:,ii, jj))))
+            disp('Check X, U TorsoFF');
+        end
         CostTorsoFFinit(jj) = CostTorsoFFinit(jj) + discount*l_Biped2DFirst(sys_TorsoFF, XTorsoFFinit(:,ii, jj), UTorsoFFinit(:,ii, jj) - u0)*sys_TorsoFF.dt;
         discount = discount*sys_TorsoFF.gamma_;
     end
@@ -910,10 +946,13 @@ for jj=1:1:size(x_starts, 2)
     for ii=1:1:NUM_CTRL
         UCOMTSinit(:,ii, jj) = min(max(u0Free - K_COMTS*(XCOMTSinit(:,ii, jj) - goal), lims(:,1)), lims(:,2));        
         XCOMTSinit(:,ii+1, jj) = f_Biped2DSecond_finite(sys_COMTS, XCOMTSinit(:,ii, jj), UCOMTSinit(:,ii, jj), u0Fixed, -K_TorsoFF, sys_TorsoFF.goal, sys_COMTS.dt);
-        CostCOMTSinit(jj) = CostCOMTSinit(jj) + discount*l_Biped2DSecond(sys_COMTS, XCOMTSinit(:,ii, jj), UCOMTSinit(:,ii, jj) - u0Free, zeros(length(u0Fixed,1)), -K_TorsoFF, sys_TorsoFF.goal)*sys_COMTS.dt;
+        if (any(isnan(UCOMTSinit(:,ii, jj))) || any(isnan(XCOMTSinit(:,ii, jj))))
+            disp('Check X, U COMTS');
+        end
+        CostCOMTSinit(jj) = CostCOMTSinit(jj) + discount*l_Biped2DSecond(sys_COMTS, XCOMTSinit(:,ii, jj), UCOMTSinit(:,ii, jj) - u0Free, zeros(length(u0Fixed),1), -K_TorsoFF, sys_TorsoFF.goal)*sys_COMTS.dt;
         discount = discount*sys_COMTS.gamma_;
     end
-    CostCOMTSinit(jj) = CostCOMTSinit(jj) + discount*l_Biped2DSecond(sys_COMTS, XCOMTSinit(:,NUM_CTRL+1, jj), zeros(length(u0Free,1)), zeros(length(u0Fixed,1)), -K_TorsoFF, sys_TorsoFF.goal)*sys_COMTS.dt;
+    CostCOMTSinit(jj) = CostCOMTSinit(jj) + discount*l_Biped2DSecond(sys_COMTS, XCOMTSinit(:,NUM_CTRL+1, jj), zeros(length(u0Free),1), zeros(length(u0Fixed),1), -K_TorsoFF, sys_TorsoFF.goal)*sys_COMTS.dt;
     
     Op.cost = CostCOMTSinit(jj);
     tic;

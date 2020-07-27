@@ -25,7 +25,7 @@ sys.lims = [-6, 6;
             -6, 6];
 % Optimization parameters
 Op.lims  = sys.lims;
-Op.maxIter = 200;
+Op.maxIter = 500;
 Op.gamma_ = sys.gamma_;
 Op.Alpha = [0.2];
 
