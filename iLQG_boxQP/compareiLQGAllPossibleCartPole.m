@@ -1,19 +1,20 @@
 clear;
-% clc;
+clc;
 close all;
 
 %%
 addpath('cartpole');
 iLQG_dir = 'data/';
-iLQG_AllPossible_filename = "iLQGCartPoleAllPossibleDecomposed_diffR_furthercloserstarts_alpha_0.5_gamma_0.997mc=5,mp=1.mat";
-iLQG_Joint_filename = "iLQGCartPoleDecomposed_diffR_difffurthercloserstarts_finestalpha_gamma_0.997mc=5,mp=1.mat";
+iLQG_AllPossible_filename = "iLQGCartPoleAllPossibleDecomposed_diffR_furthercloserstarts_alpha_0.1_gamma_0.997mc=5,mp=1.mat";
+iLQG_Joint_filename = "iLQGCartPoleAllPossibleDecomposed_diffR_furthercloserstarts_alpha_0.1_gamma_0.997mc=5,mp=1.mat";
 
 load(strcat(iLQG_dir, iLQG_AllPossible_filename), 'sysFF', 'sysTS', 'sysTF', 'sysFS', 'x_starts', 'NUM_CTRL');
-load(strcat(iLQG_dir, iLQG_Joint_filename), 'CJoint', 'sys');
-
+load(strcat(iLQG_dir, iLQG_Joint_filename), 'sysJoint', 'sys');
+CJoint = sysJoint.Cn;
 
 %% Cascaded
-include_trajectories = [1, 2, 5, 6, 7, 8, 11, 12, 19, 20, 23, 24, 25, 26, 29, 30];
+% include_trajectories = [1, 2, 5, 6, 7, 8, 11, 12, 19, 20, 23, 24, 25, 26, 29, 30];
+include_trajectories = linspace(1,16,16);
 JJoint = reshape(sum(CJoint(1,:,:), 2), length(include_trajectories), 1);
 
 % F First
@@ -46,8 +47,8 @@ end
 
 %% Decoupled
 
-Dec = cell(size(sysTS, 1), 1);
-JErrDec = nan(size(sysTS, 1), 1);
+Dec = cell(size(sysTS, 1)-1, 1);
+JErrDec = nan(size(sysTS, 1)-1, 1);
 sys.X_DIMS_FREE = [1;2;3;4];
 sys.X_DIMS_FIXED = [];
 sys.U_DIMS_FREE = [1;2];
@@ -56,7 +57,7 @@ sys.U_DIMS_FIXED = [];
 U_DIMS = cell(2,1);
 U_DIMS{1,1} = [1];
 U_DIMS{2,1} = [2];
-for ii=1:1:size(sysTS, 1)
+for ii=1:1:(size(sysTS, 1)-1)
     sysFF_ = sysFF{ii,1};
     F_DIMS_FREE = sysFF_.X_DIMS_FREE;
     Dec{ii, 1} = F_DIMS_FREE;
@@ -92,18 +93,18 @@ for ii=1:1:size(sysTS, 1)
     JErrDec(ii, 1) = sum(abs(JDec - JJoint));
 end
 
-Casc = cell(3*size(CascTF,1), 2);
-Casc(1:14, 1) = CascFF;
-Casc(15:28, 1) = CascTF;
-Casc(29:42, 1) = CascFF;
-Casc(1:14, 2) = {1};
-Casc(15:28, 2) = {2};
-Casc(29:42, 2) = {3};
-JErr= [JErrFF; JErrTF; JErrDec];
+Casc = cell(size(CascFF,1) + size(CascTF,1) + size(Dec,1), 2);
+Casc(1:size(CascFF,1), 1) = CascFF;
+Casc(1:size(CascFF,1), 2) = {1};
+Casc((size(CascFF,1) + 1):(size(CascFF,1) + size(CascTF,1)), 1) = CascTF;
+Casc((size(CascFF,1) + 1):(size(CascFF,1) + size(CascTF,1)), 2) = {2};
+Casc((size(CascFF,1) + size(CascTF,1) + 1):(size(CascFF,1) + size(CascTF,1) + size(Dec,1)), 1) = Dec;
+Casc((size(CascFF,1) + size(CascTF,1) + 1):(size(CascFF,1) + size(CascTF,1) + size(Dec,1)), 2) = {3};
+JErr = [JErrFF; JErrTF; JErrDec];
 [JErrsorted, Errorder] = sort(JErr);
 
 for nn=1:1:size(JErr, 1)
     decomp = Casc{Errorder(nn),1};
     decomptype = Casc{Errorder(nn),2};
-    disp(strcat(num2str(decomp), ', (', num2str(decomptype),'), Err : ', num2str(JErrsorted(nn))));
+    disp(strcat(num2str(decomp'), ', (', num2str(decomptype),'), Err : ', num2str(JErrsorted(nn))));
 end
