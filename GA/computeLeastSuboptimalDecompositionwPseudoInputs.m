@@ -32,7 +32,7 @@ options_casc.Display = 'iter';
 options_casc.PopulationSize = 500;
 options_casc.CrossoverFraction = 0.9;
 options_casc.EliteCount = 0.9*options_casc.PopulationSize;
-options_casc.CreationFcn = @(nvars, fitness_fcn, options) generate_population(sys, options.PopulationSize);
+options_casc.CreationFcn = @(nvars, fitness_fcn, options) generate_population_cascaded(sys, options.PopulationSize);
 % options_casc.PopulationType = 'bitstring';
 
 [x_casc, err_lqr_casc, casc_exit_flag, casc_output, ...
@@ -57,12 +57,13 @@ b_dec = [];
 Aeq_dec = [];
 beq_dec = [];
 nonlcon_dec = @(x) decoupled_constraints_wpseudo_inputs(reshape(x, U_DIMS, sys.X_DIMS));
-IntCon_dec = linspace(1,nvars_dec,nvars_dec);
+IntCon_dec = []; % linspace(1,nvars_dec,nvars_dec);
 
 options_dec.Display = 'iter';
-options_dec.PopulationSize = 1000;
+options_dec.PopulationSize = 500;
 options_dec.CrossoverFraction = 0.9;
 options_dec.EliteCount = 0.9*options_dec.PopulationSize;
+options_dec.CreationFcn = @(nvars, fitness_fcn, options) generate_population_decoupled(sys, options.PopulationSize);
 % options_dec.PopulationType = 'bitstring';
 
 [x_dec, err_lqr_dec, dec_exit_flag, dec_output, ...
@@ -80,9 +81,13 @@ function [state, options, optchanged] = debug_ga(options, state, flag, interval)
     num_invalid_samples = extract_decompositions_from_population(sys, state.Population);
 end
 
-function population = generate_population(sys, n)
+function population = generate_population_cascaded(sys, n)
     
-    r = randi([1,sys.U_DIMS], sys.U_DIMS, n);
+    r = ones(sys.U_DIMS,1);
+    while (all(r == round(mean(r))))
+       r = randi([1,sys.U_DIMS], sys.U_DIMS, n); 
+    end
+    
     s = zeros(sys.U_DIMS, sys.X_DIMS, n);
     for ii=1:1:n
         rC = unique(r(:,ii));
@@ -100,4 +105,30 @@ function population = generate_population(sys, n)
     end
     
     population = [r', reshape(permute(s,[3,1,2]), n, sys.U_DIMS*sys.X_DIMS)];
+end
+
+function population = generate_population_decoupled(sys, n)
+    
+    r = ones(sys.U_DIMS,1);
+    while (all(r == round(mean(r))))
+       r = randi([1,sys.U_DIMS], sys.U_DIMS, n); 
+    end
+    
+    s = zeros(sys.U_DIMS, sys.X_DIMS, n);
+    for ii=1:1:n
+        rC = unique(r(:,ii));
+        state = linspace(1, sys.X_DIMS, sys.X_DIMS);
+        for jj=1:1:length(rC)
+            k = randi([1, length(state)-(length(rC) - jj)], 1);
+            sub_state = nchoosek(linspace(1,length(state),length(state)), k);
+            sub_state = sub_state(randi([1, size(sub_state,1)],1),:);
+            sub_state_ = state(sub_state);
+            state(sub_state) = [];
+
+            s(r(:,ii)==rC(jj), sub_state_, ii) = 1;
+        end
+        s(r(:,ii)==rC(jj), state, ii) = 1;
+    end
+    
+    population = reshape(permute(s,[3,1,2]), n, sys.U_DIMS*sys.X_DIMS);
 end
