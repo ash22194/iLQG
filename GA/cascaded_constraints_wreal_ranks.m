@@ -2,7 +2,8 @@ function [c, c_eq] = cascaded_constraints_wreal_ranks(r, s)
     
     r = round(r);
     s = round(s);
-
+    
+    n = size(s,2);
     m = size(s,1);
     
     c = [];
@@ -22,4 +23,7 @@ function [c, c_eq] = cascaded_constraints_wreal_ranks(r, s)
         c = [c; are_coupled*complete_state_overlap; -are_coupled*complete_state_overlap;
              (1-are_coupled)*no_state_overlap; (are_coupled-1)*no_state_overlap];
     end
+    
+    % Constraint to avoid jointly optimizing the inputs
+    c = [c; sum(s, 2) - (n-1)];
 end

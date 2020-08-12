@@ -1,96 +1,130 @@
-function err_lqr = computeLQRMeasure(sys, r, s, d)
-%% Inputs
-% r is m x m binary matrix rij = 1 if input i has rank j
-% s is m x n binary matrix sij = 1 if input j is dependent on state i
-% d is a binary variable d = 1 => decoupled, d = 0 => cascaded
+function err_lqr = computeLQRMeasure(sys, p, s)
+%% 
+% p is m x 2 matrix where pi1 denotes the parent to input i
+%                         pi2 denotes the child ID for input i
+% If two inputs have the same non-zero parent and the same child ID, then they are coupled
+% s is m x n matrix where sij = 1 if input i is dependent on state j
 
-r = logical(r);
-s = logical(s);
-d = logical(d);
-K = zeros(sys.U_DIMS, sys.X_DIMS);
-u0 = zeros(sys.U_DIMS,1);
+%% 
 
-%% Decomposition
-if (d==1)
-    % Decoupled
-    for ii = 1:1:size(sys.U_PSEUDO_DIMS, 1)
-%         A_ = sys.A(s(ii,:), s(ii,:));
-%         B_ = sys.B(s(ii,:), ii);
-        u0_ = u0;
-        u0_(ii) = sys.u0(sys.U_PSEUDO_DIMS{ii});
-        fxu = eval(subs(sys.fxu, [sys.x; sys.u], [sys.l_point; u0_]));
-        A_ = fxu(:,1:sys.X_DIMS);
-        A_ = A_(s(ii,:), s(ii,:));
-        B_ = sys.B(s(ii,:), sys.U_PSEUDO_DIMS{ii}); % B calculation remains the same as system is control affine
+[c, c_eq] = constraints(p, s);
+if (any(c_eq~=0) || any(c > 0))
+    err_lqr = 1e8;
+else
+    p = round(p);
+    s = logical(round(s));
+    assert(any(p(:,1)==0), 'Root of the tree must be 0');
+    assert(all(p(:,1)~=linspace(1,sys.U_DIMS,sys.U_DIMS)'), 'No input can be its own parent');
 
-        Q_ = sys.Q(s(ii,:), s(ii,:));
-        R_ = sys.R(sys.U_PSEUDO_DIMS{ii}, sys.U_PSEUDO_DIMS{ii});
+    p_ = [linspace(1, sys.U_DIMS, sys.U_DIMS)', p];
+    % Build tree
+    action_tree = {};
+    queue = {{0; -1}};
 
-        [K(sys.U_PSEUDO_DIMS{ii}, s(ii,:)), ~, ~] = lqr(A_ - eye(size(A_,1))*sys.lambda_/2, B_, ...
-                                                          Q_, R_, zeros(size(A_,1), size(B_,2)));
-    end
-        S = lyap((sys.A - sys.B*K - sys.lambda_/2*eye(size(sys.A,1)))', ...
-                 K'*sys.R*K + sys.Q);
-        if (any(eig(S)) < 0)
-            err_lqr = inf;
+    while(~isempty(queue))
+        curr_node = queue{1}; % pop the top element
+        curr_parent = curr_node{2};
+        curr_node = curr_node{1};
+        queue = queue(2:end);
+
+        children = p_(any(p_(:,2)==curr_node', 2), [1, 3]); % Find inputs that are children to curr_parent
+        childID = unique(children(:,2));                    % Find unique childIDs, inputs are coupled if child IDs are same
+        curr_children = cell(length(childID), 1);
+        for ii=1:1:length(childID)
+            curr_children{ii} = children(children(:,2)==childID(ii), 1);
+            assert(all(s(curr_children{ii}, :) == prod(s(curr_children{ii}, :), 1), 'all'), ...
+                   'Coupled inputs must have same state assignment');
+            queue{end+1} = {curr_children{ii}; curr_node};
+        end
+
+        u0_curr = zeros(sys.U_DIMS, 1);
+        K_curr = zeros(sys.U_DIMS, sys.X_DIMS);
+        if (curr_node~=0)
+            curr_state = s(curr_node(1), :);
+            u0_curr(curr_node) = sys.u0(curr_node);
         else
-            %  V = computeValueGrid(S, sys.l_point, sys.grid{:});
-            %  err_lqr = mean(abs(V(sys.valid_range) - sys.V_joint(sys.valid_range)), 'all');
-            V = sum((sys.valid_states - sys.l_point).*(S*(sys.valid_states - sys.l_point)), 1)';
-            err_lqr = mean(abs(V - sys.V_joint));
+            curr_state = zeros(1, sys.X_DIMS);
         end
-elseif (d==0)
-    % Cascaded
-    [u_order, ~] = find(r);
-    u_prev = [];
-    s_curr = [];
-    
-    for ii=1:1:size(sys.U_PSEUDO_DIMS, 1)
-        u_curr = sys.U_PSEUDO_DIMS{u_order(ii)};
-        u_prev = sort([u_prev; u_curr]);
-        s_curr = sort([s_curr, find(s(u_order(ii), :))]);
-        
-%         A_ = sys.A - sys.B*K;
-        u0_ = u0;
-        u0_(u_prev) = sys.u0(u_prev);
-        fxu = eval(subs(sys.fxu, [sys.x; sys.u], [sys.l_point; u0_]));
-        A_ = fxu(:,1:sys.X_DIMS);
-        A_ = A_ - sys.B*K; % B calculation remains the same as system is control affine
-        A_ = A_(s_curr, s_curr);
-        B_ = zeros(length(s_curr), size(sys.B,2)); 
-        B_(:, u_curr) = sys.B(s_curr, u_curr);
-        R_ = sys.R;
-        Q_ = sys.Q + K'*R_*K;
-        Q_ = Q_(s_curr, s_curr);
-
-        [K_, S, ~] = lqr(A_ - eye(size(A_,1))*sys.lambda_/2, B_, ...
-                         Q_, R_, zeros(size(A_,1), size(B_,2)));
-        K(u_curr, s_curr) = K_(u_curr, :);
+        action_tree(end+1, :) = {curr_node, curr_state, ...
+                                 u0_curr, K_curr, ...
+                                 curr_parent, curr_children};
     end
 
-    if (any(eig(S)) < 0)
-        err_lqr = inf;
-    else
-%         V = computeValueGrid(S, sys.l_point, sys.grid{:});
-%         err_lqr = mean(abs(V(sys.valid_range) - sys.V_joint(sys.valid_range)), 'all');
-        V = sum((sys.valid_states - sys.l_point).*(S*(sys.valid_states - sys.l_point)), 1)';
-        err_lqr = mean(abs(V - sys.V_joint));
+    while (~isempty(action_tree))
+        % Find leaf nodes
+        leaf_node_ids = cellfun(@(x) isempty(x), action_tree(:,end));
+        leaf_nodes = action_tree(leaf_node_ids, :);
+%         leaf_node_ids = find(leaf_node_ids);
+
+        if (size(leaf_nodes, 1)==1 && all(leaf_nodes{1,1}==0))
+            K = leaf_nodes{1,4};
+            try
+                S = lyap((sys.A - sys.B*K - sys.lambda_/2*eye(size(sys.A,1)))', ...
+                         K'*sys.R*K + sys.Q);
+            catch ME
+                S = -ones(sys.X_DIMS);
+            end
+
+            if (any(eig(S)) < 0)
+                err_lqr = inf;
+                return;
+            else
+                %  V = computeValueGrid(S, sys.l_point, sys.grid{:});
+                %  err_lqr = mean(abs(V(sys.valid_range) - sys.V_joint(sys.valid_range)), 'all');
+                V = sum((sys.valid_states - sys.l_point).*(S*(sys.valid_states - sys.l_point)), 1)';
+                err_lqr = mean(abs(V - sys.V_joint));
+            end
+            break;
+        end
+
+        for ii=1:1:size(leaf_nodes,1)
+            u0_ = leaf_nodes{ii, 3};
+            K = leaf_nodes{ii, 4};
+            fxu = eval(subs(sys.fxu, [sys.x; sys.u], [sys.l_point; u0_]));
+            A_ = fxu(:,1:sys.X_DIMS);
+            B_ = fxu(:,(sys.X_DIMS+1):end);
+            Q_ = sys.Q;
+            R_ = sys.R;
+
+            A_ = A_ - B_*K;
+            A_ = A_(logical(leaf_nodes{ii, 2}), logical(leaf_nodes{ii, 2}));
+            B_ = B_(logical(leaf_nodes{ii, 2}), leaf_nodes{ii, 1});
+            Q_ = Q_ + K'*R_*K;
+            Q_ = Q_(logical(leaf_nodes{ii, 2}), logical(leaf_nodes{ii, 2}));
+            R_ = R_(leaf_nodes{ii, 1}, leaf_nodes{ii, 1});
+
+            try
+                [K_, ~, ~] = lqr(A_ - eye(size(A_, 1))*sys.lambda_/2, B_, ...
+                                 Q_, R_, zeros(size(A_, 1), size(B_, 2)));
+            catch ME
+                err_lqr = inf;
+                return;
+            end
+            K(leaf_nodes{ii, 1}, logical(leaf_nodes{ii, 2})) = K_;
+
+            parent_input = leaf_nodes{ii, 5};
+            parent_node_id = find(cellfun(@(x) isempty(setdiff(x, parent_input)) && isempty(setdiff(parent_input, x)),...
+                                  action_tree(:, 1)));
+            assert(length(parent_node_id)==1, 'Invalid Parent Node ID');
+            parent_node = action_tree(parent_node_id, :);
+
+            assert(all(~(parent_node{2} .* leaf_nodes{ii, 2})), 'Invalid state overlap');
+            parent_node{2} = parent_node{2} + leaf_nodes{ii, 2};
+            parent_node{3} = parent_node{3} + leaf_nodes{ii, 3};
+            parent_node{4} = parent_node{4} + K;
+
+            % Find and delete the leaf_node in the list of children
+            children_list = parent_node{end};
+            childID = cellfun(@(x) isempty(setdiff(x, leaf_nodes{ii, 1})) ...
+                                   && isempty(setdiff(leaf_nodes{ii, 1}, x)), ...
+                            children_list);
+            children_list(childID) = [];
+            parent_node{end} = children_list;
+
+            action_tree(parent_node_id, :) = parent_node;
+        end
+        action_tree(leaf_node_ids, :) = [];
     end
 end
 
-end
-
-function val_grid = computeValueGrid(S, l_point, varargin)
-    
-    assert(size(S,1)==size(S,2), 'S must be square');
-    assert(size(S,1)==(nargin-2), 'Must provide as many grid matrices as dimensions');
-    assert(length(l_point)==size(S,1), 'Check l_point dimension');
-    
-    val_grid = zeros(size(varargin{1}));
-    
-    for i=1:1:size(S,1)
-        for j=1:1:size(S,1)
-            val_grid = val_grid + (varargin{i} - l_point(i)).*(varargin{j} - l_point(j))*S(i,j);
-        end
-    end
 end

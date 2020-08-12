@@ -43,6 +43,7 @@ else
         B_(:, u_curr) = sys.B(s_curr, u_curr);
         R_ = sys.R;
         Q_ = sys.Q + K'*R_*K;
+        Q_ = Q_(s_curr, s_curr);
         
         try
             [K_, S, ~] = lqr(A_ - eye(size(A_,1))*sys.lambda_/2, B_, ...
