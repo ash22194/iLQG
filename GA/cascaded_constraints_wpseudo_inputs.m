@@ -9,7 +9,7 @@ function [c, c_eq] = cascaded_constraints_wpseudo_inputs(r, s)
     c_eq = [];
     
 %     c_eq = [c_eq; (sum(r, 2) - 1)];
-    c = [c; (1 - sum(s, 2)); (1 - sum(s,1)');
+    c = [c; (1 - sum(s, 2)); (1 - sum(s, 1)');
          (sum(r, 2) - 1); (1 - sum(r, 2))];
     
     input_couples = nchoosek(linspace(1,m,m), 2);
@@ -23,4 +23,7 @@ function [c, c_eq] = cascaded_constraints_wpseudo_inputs(r, s)
         c = [c; are_coupled*complete_state_overlap; -are_coupled*complete_state_overlap;
              (1-are_coupled)*no_state_overlap; (are_coupled-1)*no_state_overlap];
     end
+    
+    % Constraint to avoid jointly optimizing the inputs
+    c = [c; sum(s, 2) - (sys.X_DIMS-1)];
 end

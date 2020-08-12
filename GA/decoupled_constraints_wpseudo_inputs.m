@@ -20,4 +20,7 @@ function [c, c_eq] = decoupled_constraints_wpseudo_inputs(s)
                   1 - no_state_overlap*(1 - complete_state_overlap) ...
                   - complete_state_overlap*(1 - no_state_overlap)];
     end
+    
+    % Constraint to avoid jointly optimizing the inputs
+    c = [c; sum(s, 2) - (sys.X_DIMS-1)];
 end
