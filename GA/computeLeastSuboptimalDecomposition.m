@@ -43,7 +43,10 @@ err_lqr = computeLQRMeasure(sys,p,s);
 function population = generate_population(sys, n)
     
     % Decide input coupling
-    r = randi([1, sys.U_DIMS], sys.U_DIMS, n);
+    r = ones(sys.U_DIMS,1);
+    while (all(r == round(mean(r))))
+       r = randi([1,sys.U_DIMS], sys.U_DIMS, n); 
+    end
     p = zeros(sys.U_DIMS, 2, n);
     s = zeros(sys.U_DIMS, sys.X_DIMS, n);
     
