@@ -25,7 +25,13 @@ c = [c; 1 - sum(p(:,1)==0)];
 % No cycles in input tree (how to constraint?)  
 for ii=1:1:m
     inputi = ii;
+    loop_count = 0;
     while(inputi~=0 && p(inputi,1)~=ii)
+        loop_count = loop_count + 1;
+        if (loop_count > m)
+            disp('Cycle constraint check loop');
+            break;
+        end
         inputi = p(inputi,1);
     end
 %     c_eq = [c_eq; inputi];
@@ -41,8 +47,10 @@ for ii=1:1:size(coupled_inputs, 1)
     input1 = coupled_inputs(ii,1);
     input2 = coupled_inputs(ii,2);
     are_coupled = false;
+    loop_count = 0;
     while (input1~=0) && (input2~=0) && (p(input1,2)==p(input2,2))
-        if (p(input1,1)==p(input2,1))
+        loop_count = loop_count + 1;
+        if (p(input1,1)==p(input2,1) || (loop_count > (m+1)))
             are_coupled = true;
             break;
         end

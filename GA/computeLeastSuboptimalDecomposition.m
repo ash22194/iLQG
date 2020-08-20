@@ -7,8 +7,23 @@ clc;
 load('data/Biped2DSystem.mat');
 
 % Debug
-% num_samples = 4;
-% population = generate_population(sys, num_samples);
+num_samples = 10;
+population = generate_population(sys, num_samples);
+population_mutated = mutationfunction(sys, linspace(1,num_samples,num_samples), [], [], [], [], [], population);
+satisfy_constraint_before = zeros(num_samples,1);
+satisfy_constraint_after = zeros(num_samples,1);
+for ii=1:1:num_samples
+    ii
+    p_before = reshape(population(ii, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
+    s_before = reshape(population(ii, (2*sys.U_DIMS+1):end), sys.U_DIMS, sys.X_DIMS); disp('Before');
+    [c_before, ceq_before] = constraints(p_before, s_before);
+    satisfy_constraint_before(ii) = (all(c_before <= 0) && all(ceq_before==0));
+    p_after = reshape(population_mutated(ii, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
+    s_after = reshape(population_mutated(ii, (2*sys.U_DIMS+1):end), sys.U_DIMS, sys.X_DIMS); disp('After');
+    [c_after, ceq_after] = constraints(p_after, s_after);
+    satisfy_constraint_after(ii) = (all(c_after <= 0) && all(ceq_after==0));
+end
+% unique_population = extract_decompositions_from_population(sys, population);
 % p = reshape(population(:, 1:2*sys.U_DIMS)', sys.U_DIMS, 2, num_samples);
 % s = reshape(population(:, (2*sys.U_DIMS + 1):end)', sys.U_DIMS, sys.X_DIMS, num_samples);
 
@@ -30,13 +45,11 @@ options.CrossoverFraction = 0.9;
 options.EliteCount = 0.9*options.PopulationSize;
 options.CreationFcn = @(nvars, fitness_fcn, options) generate_population(sys, options.PopulationSize);
 
-x = ga(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon,IntCon,options);
+[x, err_lqr, exitflag, output, population, scores] = ga(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon,IntCon,options);
 
 % Extract decomposition
 p = reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2);
 s = reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_DIMS, sys.X_DIMS);
-
-err_lqr = computeLQRMeasure(sys,p,s);
 
 %% Functions
 
@@ -44,7 +57,7 @@ function population = generate_population(sys, n)
     
     % Decide input coupling
     r = ones(sys.U_DIMS,1);
-    while (all(r == round(mean(r))))
+    while (all(r == mean(r, 1)))
        r = randi([1,sys.U_DIMS], sys.U_DIMS, n); 
     end
     p = zeros(sys.U_DIMS, 2, n);
