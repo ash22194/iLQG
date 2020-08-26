@@ -6,23 +6,6 @@ clc;
 
 load('data/Biped2DSystem.mat');
 
-% Debug
-num_samples = 10;
-population = generate_population(sys, num_samples);
-population_mutated = mutationfunction(sys, linspace(1,num_samples,num_samples), [], [], [], [], [], population);
-satisfy_constraint_before = zeros(num_samples,1);
-satisfy_constraint_after = zeros(num_samples,1);
-for ii=1:1:num_samples
-    ii
-    p_before = reshape(population(ii, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
-    s_before = reshape(population(ii, (2*sys.U_DIMS+1):end), sys.U_DIMS, sys.X_DIMS); disp('Before');
-    [c_before, ceq_before] = constraints(p_before, s_before);
-    satisfy_constraint_before(ii) = (all(c_before <= 0) && all(ceq_before==0));
-    p_after = reshape(population_mutated(ii, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
-    s_after = reshape(population_mutated(ii, (2*sys.U_DIMS+1):end), sys.U_DIMS, sys.X_DIMS); disp('After');
-    [c_after, ceq_after] = constraints(p_after, s_after);
-    satisfy_constraint_after(ii) = (all(c_after <= 0) && all(ceq_after==0));
-end
 % unique_population = extract_decompositions_from_population(sys, population);
 % p = reshape(population(:, 1:2*sys.U_DIMS)', sys.U_DIMS, 2, num_samples);
 % s = reshape(population(:, (2*sys.U_DIMS + 1):end)', sys.U_DIMS, sys.X_DIMS, num_samples);
@@ -43,8 +26,12 @@ options.Display = 'iter';
 options.PopulationSize = 100;
 options.CrossoverFraction = 0.9;
 options.EliteCount = 0.9*options.PopulationSize;
-options.CreationFcn = @(nvars, fitness_fcn, options) generate_population(sys, options.PopulationSize);
-
+options.CreationFcn = @(nvars, fitness_fcn, options) ...
+                        generate_population(sys, options.PopulationSize);
+options.CrossoverFcn = @(parents, options, nvars, fitness_fcn, unused, population) ...
+                         crossoverfunction(sys, parents, options, nvars, fitness_fcn, unused, population);
+options.MutationFcn = @(parents, options, nvars, fitness_fcn, state, score, population) ...
+                         mutationfunction(sys, parents, options, nvars, fitness_fcn, state, score, population);
 [x, err_lqr, exitflag, output, population, scores] = ga(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon,IntCon,options);
 
 % Extract decomposition
@@ -56,9 +43,10 @@ s = reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_
 function population = generate_population(sys, n)
     
     % Decide input coupling
-    r = ones(sys.U_DIMS,1);
-    while (all(r == mean(r, 1)))
-       r = randi([1,sys.U_DIMS], sys.U_DIMS, n); 
+    invalid = logical(ones(1, n));
+    while (sum(invalid) > 0)
+       r(:, invalid) = randi([1,sys.U_DIMS], sys.U_DIMS, sum(invalid));
+       invalid = vecnorm(r - mean(r, 1)) < 1e-4;
     end
     p = zeros(sys.U_DIMS, 2, n);
     s = zeros(sys.U_DIMS, sys.X_DIMS, n);
@@ -103,6 +91,10 @@ function population = generate_population(sys, n)
         child_count(parent) = child_count(parent) + 1;
         p(pseudo_inputs{child}, 1, ii) = pseudo_inputs{parent}(1);
         p(pseudo_inputs{child}, 2, ii) = child_count(parent);
+        
+        if (any(p(:,1) == linspace(1, sys.U_DIMS, sys.U_DIMS)'))
+            disp('Loops!');
+        end
     end
     
     population = [reshape(p, 2*sys.U_DIMS, n)', reshape(s, sys.U_DIMS*sys.X_DIMS, n)'];

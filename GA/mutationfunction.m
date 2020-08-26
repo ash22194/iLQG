@@ -36,24 +36,18 @@ function mutationChildren = mutationfunction(sys, parents, options, nvars, ...
                 s2 = randi([1,sys.X_DIMS], 1);
             end
             
-            try
-                a1 = logical(s(:,s1));
-                a2 = logical(s(:,s2));
-                s(a1, s1) = 0;
-                s(a1, s2) = 1;
-                s(a2, s2) = 0;
-                s(a2, s1) = 1;
-            catch ME
-                disp('Something is wrong');
-            end
+           a1 = logical(s(:,s1));
+           a2 = logical(s(:,s2));
+           s(a1, s1) = 0;
+           s(a1, s2) = 1;
+           s(a2, s2) = 0;
+           s(a2, s1) = 1;
         end
         current_child((2*sys.U_DIMS + 1):end) = reshape(s, 1, sys.U_DIMS*sys.X_DIMS);
         state_mutation_children(ii, :) = current_child;
     end
     
     % Remaining cadidates for action tree manipulation
-    % Possible manipulations
-    % 3) Decouple coupled actions
     set_action_manip = ~set_state_manip;
     action_mutation_children = thisPopulation(parents(set_action_manip)', :);
     for ii=1:1:size(action_mutation_children, 1)
@@ -76,11 +70,21 @@ function mutationChildren = mutationfunction(sys, parents, options, nvars, ...
                 assert(loop_count<=sys.U_DIMS, 'Mutation error!');
             end
             new_parents = linspace(0, sys.U_DIMS, sys.U_DIMS+1);
-            new_parents(aroot_subtree) = [];
+            new_parents(aroot_subtree+1) = [];
             new_parent = new_parents(randi([1, length(new_parents)], 1));
-            p(aroot_coupled, 1) = new_parent;
-            current_child(1:2*sys.U_DIMS) = reshape(p, 1, sys.U_DIMS*2);
+            if (new_parent~=0)
+                new_parent_coupled = find(all(s(new_parent,:) == s, 2));
+            else
+                new_parent_coupled = new_parent;
+            end
             
+            new_parent_children = linspace(1, sys.U_DIMS, sys.U_DIMS);
+            new_parent_children(p(any(p(:,1) == new_parent_coupled', 2), 2)) = [];
+            if (~isempty(new_parent_children))
+                p(aroot_coupled, 1) = new_parent;
+                p(aroot_coupled, 2) = new_parent_children(1);
+                current_child(1:2*sys.U_DIMS) = reshape(p, 1, sys.U_DIMS*2);
+            end
         else
             % 2) Couple decoupled actions
             % 3) Decouple coupled actions
@@ -106,11 +110,9 @@ function mutationChildren = mutationfunction(sys, parents, options, nvars, ...
                     decouplea1 = a1coupled(decouplea1index);
                     a1coupled(decouplea1index) = [];
 
-                    newchildID = randi([1, sys.U_DIMS], 1);
-                    while (newchildID==p(decouplea1, 2))
-                        newchildID = randi([1, sys.U_DIMS], 1);
-                    end
-                    p(decouplea1, 2) = newchildID;
+                    newchildID = linspace(1, sys.U_DIMS, sys.U_DIMS);
+                    newchildID(p(any(p(:,1) == p(decouplea1, 1)', 2), 2)) = [];
+                    p(decouplea1, 2) = newchildID(1);
 
                     a1states = find(s(a1, :));
                     decouplea1states = rand(1, length(a1states)) > 0.5;
