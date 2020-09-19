@@ -55,7 +55,7 @@ else
     else
     %     V = computeValueGrid(S, sys.l_point, sys.grid{:});
     %     err_lqr = mean(abs(V(sys.valid_range) - sys.V_joint(sys.valid_range)), 'all');
-        if (size(S)~=6)
+        if (size(S, 1)~=sys.X_DIMS || size(S, 2)~=sys.X_DIMS)
             disp('something is wrong!');
         end
         V = sum((sys.valid_states - sys.l_point).*(S*(sys.valid_states - sys.l_point)), 1)';

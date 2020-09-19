@@ -1,4 +1,4 @@
-function unique_population = extract_decompositions_from_population(sys, population)
+function [unique_population, unique_population_id] = extract_decompositions_from_population(sys, population)
     
     population = round(population);
     population_ = nan(size(population, 1), sys.U_DIMS-1+sys.U_DIMS*sys.X_DIMS);
@@ -77,5 +77,5 @@ function unique_population = extract_decompositions_from_population(sys, populat
         end
     end
     
-    unique_population = unique(population_, 'rows');
+    [unique_population, unique_population_id] = unique(population_, 'rows');
 end

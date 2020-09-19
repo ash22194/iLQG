@@ -26,12 +26,12 @@ function [xoverKids] = crossoverfunction(sys, parents, options, nvars, FitnessFc
      % Match parents based on the ID that indicates input coupling
      xoverKids = [];
      for ii=1:1:length(parents)
-         ps1 = thisPopulation(ii, :);
+         ps1 = thisPopulation(parents(ii), :);
          ps2 = find(parentID(ii)==parentID, 2);
          if (length(ps2)<2)
              continue;
          end
-         ps2 = thisPopulation(ps2(2), :);
+         ps2 = thisPopulation(parents(ps2(2)), :);
          parentID(ii) = -1;
      
          p1 = reshape(ps1(1:2*sys.U_DIMS), sys.U_DIMS, 2);
@@ -112,14 +112,14 @@ function [xoverKids] = crossoverfunction(sys, parents, options, nvars, FitnessFc
 %          end
          
 %          if (are_compatible)
-%              [c1, ceq1] = constraints(p1, s2_);
-%              [c2, ceq2] = constraints(p2, s1_);
-%              if (~(all(c1 <= 0) && all(ceq1==0)))
-%                  disp('Problem in 1');
-%              end
-%              if (~(all(c2 <= 0) && all(ceq2==0)))
-%                  disp('Problem in 2');
-%              end
+             [c1, ceq1] = constraints(p1, s2_);
+             [c2, ceq2] = constraints(p2, s1_);
+             if (~(all(c1 <= 0) && all(ceq1==0)))
+                 disp('Problem in 1');
+             end
+             if (~(all(c2 <= 0) && all(ceq2==0)))
+                 disp('Problem in 2');
+             end
               xoverKids = [xoverKids; 
                            reshape(p1, 1, 2*sys.U_DIMS), reshape(s2_, 1, sys.U_DIMS*sys.X_DIMS);
                            reshape(p2, 1, 2*sys.U_DIMS), reshape(s1_, 1, sys.U_DIMS*sys.X_DIMS)];

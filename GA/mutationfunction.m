@@ -2,11 +2,12 @@ function mutationChildren = mutationfunction(sys, parents, options, nvars, ...
                                   FitnessFcn, state, thisScore, thisPopulation)
     
     % Randomly pick candidates for state manipulation
-    set_state_manip = rand(length(parents), 1) > 1;
+    set_state_manip = rand(length(parents), 1) > 0.5;
     state_mutation_children = round(thisPopulation(parents(set_state_manip)', :));
     
     for ii=1:1:size(state_mutation_children)
         current_child = state_mutation_children(ii, :);
+        p = reshape(current_child(1:2*sys.U_DIMS), sys.U_DIMS, 2);
         s = reshape(current_child((2*sys.U_DIMS + 1):end), sys.U_DIMS, sys.X_DIMS);
         if (rand() > 0.5)
             % 1) Swap state allocation for two actions
@@ -39,9 +40,13 @@ function mutationChildren = mutationfunction(sys, parents, options, nvars, ...
            a1 = logical(s(:,s1));
            a2 = logical(s(:,s2));
            s(a1, s1) = 0;
-           s(a1, s2) = 1;
            s(a2, s2) = 0;
+           s(a1, s2) = 1;
            s(a2, s1) = 1;
+        end
+        [c, c_eq] = constraints(p, s);
+        if (any(c_eq~=0) || any(c > 0))
+            disp('Invalid mutation');
         end
         current_child((2*sys.U_DIMS + 1):end) = reshape(s, 1, sys.U_DIMS*sys.X_DIMS);
         state_mutation_children(ii, :) = current_child;
@@ -55,7 +60,7 @@ function mutationChildren = mutationfunction(sys, parents, options, nvars, ...
         p = reshape(current_child(1:2*sys.U_DIMS), sys.U_DIMS, 2);
         s = reshape(current_child((2*sys.U_DIMS + 1):end), sys.U_DIMS, sys.X_DIMS);
         
-        if (rand() < 0.33)
+        if (rand() < 0.5)
             % 1) Move subtree
             aroot = randi([1, sys.U_DIMS], 1);
             aroot_coupled = find(all(s(aroot,:) == s, 2));
@@ -83,6 +88,13 @@ function mutationChildren = mutationfunction(sys, parents, options, nvars, ...
             if (~isempty(new_parent_children))
                 p(aroot_coupled, 1) = new_parent;
                 p(aroot_coupled, 2) = new_parent_children(1);
+                if (any(p(:,1)==linspace(1,sys.U_DIMS,sys.U_DIMS)'))
+                    disp('Loops!');
+                end
+                [c, c_eq] = constraints(p, s);
+                if (any(c_eq~=0) || any(c > 0))
+                    disp('Invalid mutation');
+                end
                 current_child(1:2*sys.U_DIMS) = reshape(p, 1, sys.U_DIMS*2);
             end
         else
@@ -131,6 +143,13 @@ function mutationChildren = mutationfunction(sys, parents, options, nvars, ...
                     s(a1coupled || a2coupled, :) = statescoupled;
                     
                 end
+            end
+            if (any(p(:,1)==linspace(1,sys.U_DIMS,sys.U_DIMS)'))
+                disp('Loops!');
+            end
+            [c, c_eq] = constraints(p, s);
+            if (any(c_eq~=0) || any(c > 0))
+                disp('Invalid mutation');
             end
             current_child(1:2*sys.U_DIMS) = reshape(p, 1, sys.U_DIMS*2);
             current_child((2*sys.U_DIMS+1):end) = reshape(s, 1, sys.U_DIMS*sys.X_DIMS);
