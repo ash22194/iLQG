@@ -4,7 +4,7 @@ function dx = f_Biped2DSecond(sys, x, u, k, K, xn)
     U_DIMS_FIXED = sys.U_DIMS_FIXED;
     
     lims = sys.lims;
-    U = zeros(2, size(u,2));
+    U = zeros(4, size(u,2));
     U(U_DIMS_FREE, :) = u;
 
     TRAJ_LENGTH = size(x,2);
