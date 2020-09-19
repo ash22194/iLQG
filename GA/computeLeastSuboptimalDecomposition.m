@@ -13,8 +13,8 @@ load('data/Biped2DSystem.mat');
 fun = @(x) computeLQRMeasure(sys, reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2), ...
                                   reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_DIMS, sys.X_DIMS));
 nvars = 2*sys.U_DIMS + sys.X_DIMS*sys.U_DIMS;
-lb = zeros(1, nvars);
-ub = ones(1, nvars);
+lb = [zeros(1, sys.U_DIMS), ones(1, sys.U_DIMS), zeros(1, sys.U_DIMS*sys.X_DIMS)];
+ub = [sys.U_DIMS*ones(1, sys.U_DIMS*2), ones(1, sys.U_DIMS*sys.X_DIMS)];
 A = [];
 b = [];
 Aeq = [];
@@ -23,9 +23,9 @@ nonlcon = @(x) constraints(reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2), ...
                            reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_DIMS, sys.X_DIMS));
 IntCon = [];
 options.Display = 'iter';
-options.PopulationSize = 100;
-options.CrossoverFraction = 0.9;
-options.EliteCount = 0.9*options.PopulationSize;
+options.PopulationSize = 80;
+options.CrossoverFraction = 0.6;
+options.EliteCount = 0.2*options.PopulationSize; options.InitialPopulation = generate_population(sys, options.PopulationSize);
 options.CreationFcn = @(nvars, fitness_fcn, options) ...
                         generate_population(sys, options.PopulationSize);
 options.CrossoverFcn = @(parents, options, nvars, fitness_fcn, unused, population) ...
@@ -92,8 +92,12 @@ function population = generate_population(sys, n)
         p(pseudo_inputs{child}, 1, ii) = pseudo_inputs{parent}(1);
         p(pseudo_inputs{child}, 2, ii) = child_count(parent);
         
-        if (any(p(:,1) == linspace(1, sys.U_DIMS, sys.U_DIMS)'))
+        if (any(p(:,1,ii) == linspace(1, sys.U_DIMS, sys.U_DIMS)'))
             disp('Loops!');
+        end
+        [c, c_eq] = constraints(p(:,:,ii), s(:,:,ii));
+        if (any(c_eq~=0) || any(c > 0))
+            disp('Invalid construct');
         end
     end
     

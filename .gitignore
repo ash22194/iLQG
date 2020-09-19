@@ -11,4 +11,5 @@
 
 **.mat
 **.fig
+**.ipynb_checkpoints
 .DS_Store
