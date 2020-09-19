@@ -14,7 +14,7 @@ function fu = fu_Biped2D(sys, x, u)
     contact2  = (l2<=sys.l0);
     ca2       = ca2.*contact2;
     sa2       = sa2.*contact2;
-         
+    
     fu = zeros(size(x, 1), size(u, 1), size(x, 2));
     fu(3,1,:) = ca1/sys.m;
     fu(3,2,:) = ca2/sys.m;
@@ -26,8 +26,9 @@ function fu = fu_Biped2D(sys, x, u)
     fu(4,3,:) = -ca1./(x(1,:)*sys.m);
     fu(4,4,:) = -ca2./(l2*sys.m);
     
-    fu(6,1,:) = sys.d*cos(x(2,:) - x(5,:));
-    fu(6,2,:) = sys.d*cos(a2 - x(5,:));
-    fu(6,3,:) = 1 + sys.d./x(1,:).*sin(x(2,:) - x(5,:));
-    fu(6,4,:) = 1 + sys.d./l2.*sin(a2 - x(5,:));
+    fu(6,1,:) = sys.d*cos(x(2,:) - x(5,:)).*contact1;
+    fu(6,2,:) = sys.d*cos(a2 - x(5,:)).*contact2;
+    fu(6,3,:) = (1 + sys.d./x(1,:).*sin(x(2,:) - x(5,:))).*contact1;
+    fu(6,4,:) = (1 + sys.d./l2.*sin(a2 - x(5,:))).*contact2;
+    
 end

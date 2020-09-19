@@ -88,7 +88,7 @@ function mutationChildren = mutationfunction(sys, parents, options, nvars, ...
             if (~isempty(new_parent_children))
                 p(aroot_coupled, 1) = new_parent;
                 p(aroot_coupled, 2) = new_parent_children(1);
-                if (any(p(:,1) == linspace(1, sys.U_DIMS, sys.U_DIMS)'))
+                if (any(p(:,1)==linspace(1,sys.U_DIMS,sys.U_DIMS)'))
                     disp('Loops!');
                 end
                 [c, c_eq] = constraints(p, s);
@@ -144,7 +144,7 @@ function mutationChildren = mutationfunction(sys, parents, options, nvars, ...
                     
                 end
             end
-            if (any(p(:,1) == linspace(1, sys.U_DIMS, sys.U_DIMS)'))
+            if (any(p(:,1)==linspace(1,sys.U_DIMS,sys.U_DIMS)'))
                 disp('Loops!');
             end
             [c, c_eq] = constraints(p, s);

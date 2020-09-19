@@ -7,8 +7,10 @@ clc;
 load('data/QuadcopterSystem.mat');
 sys.xu = [sys.x; sys.u];
 
-fun = @(x) computeLQRMeasure(sys, reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2), ...
-                                  reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_DIMS, sys.X_DIMS));
+fun = @(x) [computeLQRMeasure(sys, reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2), ...
+                                  reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_DIMS, sys.X_DIMS)), ...
+            computeComplexityEstimates(sys, reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2), ...
+                                  reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_DIMS, sys.X_DIMS))];
 nvars = 2*sys.U_DIMS + sys.X_DIMS*sys.U_DIMS;
 lb = [zeros(1, sys.U_DIMS), ones(1, sys.U_DIMS), zeros(1, sys.U_DIMS*sys.X_DIMS)];
 ub = [sys.U_DIMS*ones(1, sys.U_DIMS*2), ones(1, sys.U_DIMS*sys.X_DIMS)];
@@ -18,10 +20,10 @@ Aeq = [];
 beq = [];
 nonlcon = @(x) constraints(reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2), ...
                            reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_DIMS, sys.X_DIMS));
-IntCon = [];
+
 options.Display = 'iter';
 options.PopulationSize = 200;
-options.CrossoverFraction = 0.6;
+options.CrossoverFraction = 0.9;
 options.EliteCount = 0.2*options.PopulationSize;
 options.InitialPopulation = generate_population(sys, options.PopulationSize);
 for ii=1:1:options.PopulationSize
@@ -40,20 +42,26 @@ options.CrossoverFcn = @(parents, options, nvars, fitness_fcn, unused, populatio
 options.MutationFcn = @(parents, options, nvars, fitness_fcn, state, score, population) ...
                          mutationfunction(sys, parents, options, nvars, fitness_fcn, state, score, population);
 % profile on;
-[x, err_lqr, exitflag, output, population, scores] = ga(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon,IntCon,options);
+[x, err_lqr, exitflag, output, population, scores] = gamultiobj(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon,options);
 % profile off;
 % profile viewer;
 
-% Extract decomposition
-p = reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2);
-s = reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_DIMS, sys.X_DIMS);
+% Plot Pareto front
+[~, u_x_id] = extract_decompositions_from_population(sys, x);
+u_x = x(u_x_id, :);
+u_err_lqr = err_lqr(u_x_id, :);
+scatter(u_err_lqr(:,2), u_err_lqr(:,1), 40, 'filled');
+set(gca, 'xscale', 'log');
+set(gca, 'yscale', 'log');
+xlabel('Compute Time Fraction');
+ylabel('err_{lqr}^{\delta}');
 
 %% Functions
 
 function population = generate_population(sys, n)
     
     % Decide input coupling
-    invalid = true(1,n);
+    invalid = logical(ones(1, n));
     while (sum(invalid) > 0)
        r(:, invalid) = randi([1,sys.U_DIMS], sys.U_DIMS, sum(invalid));
        invalid = vecnorm(r - mean(r, 1)) < 1e-4;

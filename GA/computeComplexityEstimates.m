@@ -1,4 +1,4 @@
-function err_lqr = computeLQRMeasure(sys, p, s)
+function err_compute = computeComplexityEstimates(sys, p, s)
 %% 
 % p is m x 2 matrix where pi1 denotes the parent to input i
 %                         pi2 denotes the child ID for input i
@@ -9,7 +9,7 @@ function err_lqr = computeLQRMeasure(sys, p, s)
 
 [c, c_eq] = constraints(p, s);
 if (any(c_eq~=0) || any(c > 0))
-    err_lqr = 1e8;
+    err_compute = 1;
 else
     p = round(p);
     s = logical(round(s));
@@ -37,19 +37,17 @@ else
             queue{end+1} = {curr_children{ii}; curr_node};
         end
 
-        u0_curr = zeros(sys.U_DIMS, 1);
-        K_curr = zeros(sys.U_DIMS, sys.X_DIMS);
         if (curr_node~=0)
             curr_state = s(curr_node(1), :);
-            u0_curr(curr_node) = sys.u0(curr_node);
         else
             curr_state = zeros(1, sys.X_DIMS);
         end
         action_tree(end+1, :) = {curr_node, curr_state, ...
-                                 u0_curr, K_curr, ...
                                  curr_parent, curr_children};
     end
-
+    
+%     err_compute = -sys.U_DIMS*prod(sys.numPoints);
+    err_compute = 0;
     while (~isempty(action_tree))
         % Find leaf nodes
         leaf_node_ids = cellfun(@(x) isempty(x), action_tree(:,end));
@@ -57,67 +55,13 @@ else
 %         leaf_node_ids = find(leaf_node_ids);
 
         if (size(leaf_nodes, 1)==1 && all(leaf_nodes{1,1}==0))
-            K = leaf_nodes{1,4};
-            try
-                S = lyap((sys.A - sys.B*K - sys.lambda_/2*eye(size(sys.A,1)))', ...
-                         K'*sys.R*K + sys.Q);
-            catch ME
-                S = -eye(sys.X_DIMS);
-            end
-
-            if (any(eig(S) < 0))
-                err_lqr = inf;
-                return;
-            else
-                %  V = computeValueGrid(S, sys.l_point, sys.grid{:});
-                %  err_lqr = mean(abs(V(sys.valid_range) - sys.V_joint(sys.valid_range)), 'all');
-                
-                if (isfield(sys, 'err_lqr_func'))
-                    err_lqr = sys.err_lqr_func(S, sys.state_bounds(:,1)-sys.l_point, sys.state_bounds(:,2)-sys.l_point)/sys.da;
-                else
-                    V = sum((sys.valid_states - sys.l_point).*(S*(sys.valid_states - sys.l_point)), 1)';
-                    err_lqr = mean(abs(V - sys.V_joint));
-                end
-                
-                if (err_lqr < 0)
-                    disp('Negative Err!');
-                end
-                                
-            end
             break;
         end
         
         for ii=1:1:size(leaf_nodes,1)
-            u0_ = leaf_nodes{ii, 3};
-            K = leaf_nodes{ii, 4};
-            if (isfield(sys, 'fxu_func'))
-                fxu = sys.fxu_func(sys.l_point, u0_);
-            else
-                fxu = eval(subs(sys.fxu, [sys.xu], [sys.l_point; u0_]));
-            end
+            err_compute = err_compute + length(leaf_nodes{ii,1})*prod(sys.numPoints(logical(leaf_nodes{ii,2})));
             
-            A_ = fxu(:,1:sys.X_DIMS);
-            B_ = fxu(:,(sys.X_DIMS+1):end);
-            Q_ = sys.Q;
-            R_ = sys.R;
-
-            A_ = A_ - B_*K;
-            A_ = A_(logical(leaf_nodes{ii, 2}), logical(leaf_nodes{ii, 2}));
-            B_ = B_(logical(leaf_nodes{ii, 2}), leaf_nodes{ii, 1});
-            Q_ = Q_ + K'*R_*K;
-            Q_ = Q_(logical(leaf_nodes{ii, 2}), logical(leaf_nodes{ii, 2}));
-            R_ = R_(leaf_nodes{ii, 1}, leaf_nodes{ii, 1});
-
-            try
-                [K_, ~, ~] = lqr(A_ - eye(size(A_, 1))*sys.lambda_/2, B_, ...
-                                 Q_, R_, zeros(size(A_, 1), size(B_, 2)));
-            catch ME
-                err_lqr = inf;
-                return;
-            end
-            K(leaf_nodes{ii, 1}, logical(leaf_nodes{ii, 2})) = K_;
-
-            parent_input = leaf_nodes{ii, 5};
+            parent_input = leaf_nodes{ii, end-1};
             parent_node_id = find(cellfun(@(x) isempty(setdiff(x, parent_input)) && isempty(setdiff(parent_input, x)),...
                                   action_tree(:, 1)));
             assert(length(parent_node_id)==1, 'Invalid Parent Node ID');
@@ -125,8 +69,6 @@ else
 
             assert(all(~(parent_node{2} .* leaf_nodes{ii, 2})), 'Invalid state overlap');
             parent_node{2} = parent_node{2} + leaf_nodes{ii, 2};
-            parent_node{3} = parent_node{3} + leaf_nodes{ii, 3};
-            parent_node{4} = parent_node{4} + K;
 
             % Find and delete the leaf_node in the list of children
             children_list = parent_node{end};
@@ -140,6 +82,7 @@ else
         end
         action_tree(leaf_node_ids, :) = [];
     end
+    err_compute = err_compute / (sys.U_DIMS*prod(sys.numPoints));
 end
 
 end
