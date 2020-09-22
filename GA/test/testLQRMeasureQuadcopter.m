@@ -56,7 +56,7 @@ sys.u = u;
 sys.xu = [sys.x; sys.u];
 
 sys.gamma_ = 0.999;
-sys.Q = diag([1, 10, 10, 0.1, 0.1, 0.1, 0.01, 0.01, 0.01, 0.01]);
+sys.Q = diag([1, 2, 2, 0.25, 0.1, 0.1, 0.01, 0.01, 0.01, 0.01]);
 sys.R = 0.002*eye(4);
 sys.lambda_ = (1 - sys.gamma_)/sys.dt;
 [K_joint, S_joint, ~] = lqr(sys.A - eye(size(sys.A,1))*sys.lambda_/2, sys.B, sys.Q, sys.R, zeros(size(sys.A,1), size(sys.B,2)));
@@ -68,7 +68,7 @@ sys.err_lqr = sys.x.'*sys.S*sys.x - sys.x.'*S_joint*sys.x;
 for ii=1:1:sys.X_DIMS
     sys.err_lqr = int(sys.err_lqr, sys.x(ii), [sys.a(ii), -sys.a(ii)]);
 end
-sys.err_lqr_func = @(S,a,b) QuadcopterErrLQR(S,a);
+% sys.err_lqr_func = @(S,a,b) QuadcopterErrLQR(S,a);
 
 sys.numPoints = [12, 24*ones(1,3), 20, 20, 10, 12, 12, 10];
 sys.limits = [0.4, 1.6;

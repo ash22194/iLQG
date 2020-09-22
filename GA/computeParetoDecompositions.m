@@ -4,7 +4,8 @@ clc;
 
 %% 
 
-load('data/QuadcopterSystem.mat');
+system_name = 'manipulator2dof';
+load(strcat('data/', system_name, 'System.mat'));
 sys.xu = [sys.x; sys.u];
 
 fun = @(x) [computeLQRMeasure(sys, reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2), ...
@@ -22,7 +23,7 @@ nonlcon = @(x) constraints(reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2), ...
                            reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_DIMS, sys.X_DIMS));
 
 options.Display = 'iter';
-options.PopulationSize = 200;
+options.PopulationSize = 100;
 options.CrossoverFraction = 0.9;
 options.EliteCount = 0.2*options.PopulationSize;
 options.InitialPopulation = generate_population(sys, options.PopulationSize);
@@ -56,12 +57,15 @@ set(gca, 'yscale', 'log');
 xlabel('Compute Time Fraction');
 ylabel('err_{lqr}^{\delta}');
 
+save(strcat('data/', system_name, 'ParetoFront.mat'), 'sys', 'x', 'err_lqr', 'exitflag', 'output', ...
+     'population', 'scores', 'u_x', 'u_x_id', 'u_err_lqr');
+
 %% Functions
 
 function population = generate_population(sys, n)
     
     % Decide input coupling
-    invalid = logical(ones(1, n));
+    invalid = true(1, n);
     while (sum(invalid) > 0)
        r(:, invalid) = randi([1,sys.U_DIMS], sys.U_DIMS, sum(invalid));
        invalid = vecnorm(r - mean(r, 1)) < 1e-4;
