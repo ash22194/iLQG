@@ -31,6 +31,7 @@ function [xoverKids] = crossoverfunction(sys, parents, options, nvars, FitnessFc
          if (length(ps2)<2)
              continue;
          end
+
          ps2 = thisPopulation(parents(ps2(2)), :);
          parentID(ii) = -1;
      
