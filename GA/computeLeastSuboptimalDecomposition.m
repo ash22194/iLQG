@@ -4,7 +4,8 @@ clc;
 
 %% 
 
-load('data/QuadcopterSystem.mat');
+system_name = 'manipulator2dof';
+load(strcat('data/', system_name, 'System.mat'));
 sys.xu = [sys.x; sys.u];
 
 fun = @(x) computeLQRMeasure(sys, reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2), ...
@@ -39,10 +40,10 @@ options.CrossoverFcn = @(parents, options, nvars, fitness_fcn, unused, populatio
                          crossoverfunction(sys, parents, options, nvars, fitness_fcn, unused, population);
 options.MutationFcn = @(parents, options, nvars, fitness_fcn, state, score, population) ...
                          mutationfunction(sys, parents, options, nvars, fitness_fcn, state, score, population);
-% profile on;
+profile on;
 [x, err_lqr, exitflag, output, population, scores] = ga(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon,IntCon,options);
-% profile off;
-% profile viewer;
+profile off;
+profile viewer;
 
 % Extract decomposition
 p = reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2);
