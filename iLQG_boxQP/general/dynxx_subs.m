@@ -45,7 +45,7 @@ function out = dynxx_subs(sys, x, u, sub_policies)
             min(lims(:,2)*ones(1, TRAJ_LENGTH), U));
     
     DYNXX = dynxx(sys, X, U);
-    DYNXX = DYNXX(X_DIMS_FREE, X_DIMS_FREE, :);
+    DYNXX = DYNXX(X_DIMS_FREE, X_DIMS_FREE, X_DIMS_FREE, :);
     
     out = DYNXX;
     if (~isempty(U_DIMS_CONTROLLED))
