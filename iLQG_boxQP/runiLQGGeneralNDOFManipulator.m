@@ -22,7 +22,7 @@ sys.l_point = zeros(sys.X_DIMS, 1);
 sys.l_point(1) = pi;
 sys.goal = sys.l_point;
 sys.u0 = zeros(sys.U_DIMS, 1);
-sys.fxu_func = @(x, u) [dynx(sys, x, u), dynu(sys, x, u)];
+sys.fxfu_func = @(x, u) [dynx(sys, x, u), dynu(sys, x, u)];
 sys.lims = 15*[-ones(sys.n,1), ones(sys.n,1)]; % action limits
 
 sys.gamma_ = 0.998;
@@ -58,8 +58,11 @@ starts = starts(:, [1, end]);
 
 decompositions_file = strcat('../GA/data/', system_name, 'ParetoFront.mat');
 load(decompositions_file, 'u_x', 'u_err_lqr');
-[~, u_min_id] = min(u_err_lqr(:,1));
-u_x = u_x(u_min_id, :);
+p = [0,1;1,1];
+s = [1,0,1,0;0,1,0,1];
+u_x = [reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+% [~, u_min_id] = min(u_err_lqr(:,1));
+% u_x = u_x(u_min_id, :);
 
 sys.u0init = false;
 Xd = zeros(sys.X_DIMS, round(sys.T / sys.dt)+1, size(starts, 2), size(u_x, 1));
@@ -75,20 +78,84 @@ for d=1:1:size(u_x, 1)
     
 end
 
+sys.name = 'manipulator2dofDDP';
+sys.full_DDP = true;
+XdDDP = zeros(sys.X_DIMS, round(sys.T / sys.dt)+1, size(starts, 2), size(u_x, 1));
+UdDDP = zeros(sys.U_DIMS, round(sys.T / sys.dt), size(starts, 2), size(u_x, 1));
+cdDDP = zeros(1, size(starts, 2), size(u_x, 1));
+for d=1:1:size(u_x, 1)
+    
+    fprintf('Decomposition : %d / %d\n', d, size(u_x, 1));
+    sys.decomposition_id = d;
+    p = reshape(u_x(d, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
+    s = reshape(u_x(d, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
+    [XdDDP(:,:,:,d), UdDDP(:,:,:,d), cdDDP(:,:,d)] = ilqg_decomposition(sys, Op, p, s, starts);
+    
+end
+
+sys.u0init = true;
+sys.name = 'manipulator2dofwu0';
+sys.full_DDP = false;
+Xdwu0 = zeros(sys.X_DIMS, round(sys.T / sys.dt)+1, size(starts, 2), size(u_x, 1));
+Udwu0 = zeros(sys.U_DIMS, round(sys.T / sys.dt), size(starts, 2), size(u_x, 1));
+cdwu0 = zeros(1, size(starts, 2), size(u_x, 1));
+for d=1:1:size(u_x, 1)
+    
+    fprintf('Decomposition : %d / %d\n', d, size(u_x, 1));
+    sys.decomposition_id = d;
+    p = reshape(u_x(d, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
+    s = reshape(u_x(d, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
+    [Xdwu0(:,:,:,d), Udwu0(:,:,:,d), cdwu0(:,:,d)] = ilqg_decomposition(sys, Op, p, s, starts);
+    
+end
+
+sys.name = 'manipulator2dofwu0DDP';
+sys.full_DDP = true;
+Xdwu0DDP = zeros(sys.X_DIMS, round(sys.T / sys.dt)+1, size(starts, 2), size(u_x, 1));
+Udwu0DDP = zeros(sys.U_DIMS, round(sys.T / sys.dt), size(starts, 2), size(u_x, 1));
+cdwu0DDP = zeros(1, size(starts, 2), size(u_x, 1));
+for d=1:1:size(u_x, 1)
+    
+    fprintf('Decomposition : %d / %d\n', d, size(u_x, 1));
+    sys.decomposition_id = d;
+    p = reshape(u_x(d, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
+    s = reshape(u_x(d, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
+    [Xdwu0DDP(:,:,:,d), Udwu0DDP(:,:,:,d), cdwu0DDP(:,:,d)] = ilqg_decomposition(sys, Op, p, s, starts);
+    
+end
+
 %% Test Joint Optimization
 
 sys.u0init = false;
 sys.name = 'manipulator2dof';
+sys.full_DDP = false;
 p_joint = [0, 1;
            0, 1];
 s_joint = ones(sys.U_DIMS, sys.X_DIMS);
 sys.decomposition_id = 0;
 [Xjoint, Ujoint, cjoint] = ilqg_decomposition(sys, Op, p_joint, s_joint, starts);
 
+sys.name = 'manipulator2dofDDP';
+sys.full_DDP = true;
+p_joint = [0, 1;
+           0, 1];
+s_joint = ones(sys.U_DIMS, sys.X_DIMS);
+sys.decomposition_id = 0;
+[XjointDDP, UjointDDP, cjointDDP] = ilqg_decomposition(sys, Op, p_joint, s_joint, starts);
+
 sys.u0init = true;
 sys.name = 'manipulator2dofwu0';
+sys.full_DDP = false;
 p_joint = [0, 1;
            0, 1];
 s_joint = ones(sys.U_DIMS, sys.X_DIMS);
 sys.decomposition_id = 0;
 [Xjointwu0, Ujointwu0, cjointwu0] = ilqg_decomposition(sys, Op, p_joint, s_joint, starts);
+
+sys.name = 'manipulator2dofwu0DDP';
+sys.full_DDP = true;
+p_joint = [0, 1;
+           0, 1];
+s_joint = ones(sys.U_DIMS, sys.X_DIMS);
+sys.decomposition_id = 0;
+[Xjointwu0DDP, Ujointwu0DDP, cjointwu0DDP] = ilqg_decomposition(sys, Op, p_joint, s_joint, starts);
