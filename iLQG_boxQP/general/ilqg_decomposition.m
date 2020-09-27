@@ -95,15 +95,15 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
                 U_DIMS_CONTROLLED = [U_DIMS_CONTROLLED; sub_policies_LQR{jj, 1}];
                 X_DIMS_FREE = [X_DIMS_FREE; sub_policies_LQR{jj, 2}];
             end
-            X_DIMS_FREE = sort(X_DIMS_FREE);
+            X_DIMS_FREE = sort(unique(X_DIMS_FREE));
             
-            if (isfield(sys, 'fxu_func'))
-                fxu = sys.fxu_func(sys.l_point, u0);
+            if (isfield(sys, 'fxfu_func'))
+                fxfu = sys.fxfu_func(sys.l_point, u0);
             else
-                fxu = eval(subs(sys.fxu, [sys.x; sys.u], [sys.l_point; u0]));
+                fxfu = eval(subs(sys.fxfu, [sys.x; sys.u], [sys.l_point; u0]));
             end
-            A_ = fxu(:,1:sys.X_DIMS);
-            B_ = fxu(:,(sys.X_DIMS+1):end);
+            A_ = fxfu(:,1:sys.X_DIMS);
+            B_ = fxfu(:,(sys.X_DIMS+1):end);
             Q_ = sys.Q;
             R_ = sys.R;
 
@@ -122,14 +122,17 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
             end
             
             % Compute DDP trajectories
+            sub_policies_DDP = leaf_nodes{ii, 4};
+            sub_policies_DDP_ = sub_policies_DDP;
             sub_policies_LQR_ = sub_policies_LQR;
             for jj=1:1:NUM_SUBSYS
                 [~, sub_policies_LQR_{jj, 1}] = find(sub_policies_LQR_{jj, 1} == U_DIMS_CONTROLLED');
                 [~, sub_policies_LQR_{jj, 2}] = find(sub_policies_LQR_{jj, 2} == X_DIMS_FREE');
+                [~, sub_policies_DDP_{jj, 1}] = find(sub_policies_DDP_{jj, 1} == U_DIMS_CONTROLLED');
+                [~, sub_policies_DDP_{jj, 2}] = find(sub_policies_DDP_{jj, 2} == X_DIMS_FREE');
             end
             sub_policies_LQR = cat(1, sub_policies_LQR, ...
                                    {U_DIMS_FREE, X_DIMS_FREE, sys.u0(U_DIMS_FREE), -K_, sys.l_point(X_DIMS_FREE)});
-            sub_policies_DDP = leaf_nodes{ii, 4};
 
             sys_ = sys;
             sys_.X_DIMS_FREE = X_DIMS_FREE;
@@ -142,7 +145,7 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
             Op.lims = sys_.lims(sys_.U_DIMS_FREE, :);
 
             [X_DDP, k_DDP, K_DDP] = get_ilqg_trajectory(sys_, Op, starts(X_DIMS_FREE, :), ...
-                                                        -K_, sub_policies_LQR_, sub_policies_DDP);
+                                                        -K_, sub_policies_LQR_, sub_policies_DDP_);
             sub_policies_DDP = cat(1, sub_policies_DDP, ...
                                    {U_DIMS_FREE, X_DIMS_FREE, k_DDP, K_DDP, X_DDP});
             

@@ -47,11 +47,10 @@ function out = dynx_subs(sys, x, u, sub_policies)
     DYNX = dynx(sys, X, U);
     DYNX = DYNX(X_DIMS_FREE, X_DIMS_FREE, :);
     
-    DYNU = dynu(sys, X, U);
-    DYNU = DYNU(X_DIMS_FREE, U_DIMS_CONTROLLED, :);
-    
     out = DYNX;
     if (~isempty(U_DIMS_CONTROLLED))
+        DYNU = dynu(sys, X, U);
+        DYNU = DYNU(X_DIMS_FREE, U_DIMS_CONTROLLED, :);
         for ii=1:1:TRAJ_LENGTH
             out(:,:, ii) = out(:,:, ii) + DYNU(:,:, ii) * K(:,:, ii);
         end

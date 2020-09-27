@@ -13,7 +13,13 @@ function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = system_cst(sys, x, u, sub_p
         fx = repmat(eye(X_DIM), [1,1,size(x,2)]) ...
               + dynx_subs(sys, x, u, sub_policies) * sys.dt;
         fu = dynu_subs(sys, x, u, sub_policies) * sys.dt;
-        [fxx,fxu,fuu] = deal([]);
+        if (full_DDP)
+            fxx = dynxx_subs(sys, x, u, sub_policies) * sys.dt;
+            fxu = dynxu_subs(sys, x, u, sub_policies) * sys.dt;
+            fuu = dynuu_subs(sys, x, u, sub_policies) * sys.dt;
+        else
+            [fxx,fxu,fuu] = deal([]);
+        end
         
         c = [];
         cx = dcostdx(sys, x, u, sub_policies) * sys.dt;
