@@ -3,7 +3,7 @@ close all;
 clc;
 
 %% 
-system_name = 'quadcopter';
+system_name = 'cartpole';
 load(strcat('data/', system_name, 'System.mat'));
 sys.xu = [sys.x; sys.u];
 
@@ -22,7 +22,7 @@ nonlcon = @(x) constraints(reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2), ...
                            reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_DIMS, sys.X_DIMS));
 
 options.Display = 'iter';
-options.PopulationSize = 200;
+options.PopulationSize = 100;
 options.CrossoverFraction = 0.9;
 options.EliteCount = 0.2*options.PopulationSize;
 options.InitialPopulation = generate_population(sys, options.PopulationSize);

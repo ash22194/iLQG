@@ -52,4 +52,3 @@ sys.fu = sys.fxu(:, (sys.X_DIMS+1):end);
 % matlabFunction(simplify(sys.f), 'File', strcat(sys.name, '/dyn'));
 % matlabFunction(simplify(sys.fx), 'File', strcat(sys.name, '/dynx'));
 % matlabFunction(simplify(sys.fu), 'File', strcat(sys.name, '/dynu'));
-

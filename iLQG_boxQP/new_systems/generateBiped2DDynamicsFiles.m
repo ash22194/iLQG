@@ -54,8 +54,7 @@ sys.fx = sys.fxu(:, 1:sys.X_DIMS);
 sys.fu = sys.fxu(:, (sys.X_DIMS+1):end);
 
 % Create Dynamics Files
-mkdir(sys.name);
-matlabFunction(simplify(sys.f), 'File', strcat(sys.name, '/dyn'));
-matlabFunction(simplify(sys.fx), 'File', strcat(sys.name, '/dynx'));
-matlabFunction(simplify(sys.fu), 'File', strcat(sys.name, '/dynu'));
-
+% mkdir(sys.name);
+% matlabFunction(simplify(sys.f), 'File', strcat(sys.name, '/dyn'));
+% matlabFunction(simplify(sys.fx), 'File', strcat(sys.name, '/dynx'));
+% matlabFunction(simplify(sys.fu), 'File', strcat(sys.name, '/dynu'));
