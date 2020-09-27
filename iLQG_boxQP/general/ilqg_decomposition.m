@@ -57,6 +57,7 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
     
     % Optimization parameters
     Op.gamma_ = sys.gamma_;
+    initial_trajectories = cell(0, 5);
     
     while (~isempty(action_tree))
         % Find leaf nodes
@@ -73,6 +74,7 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
             sys_.U_DIMS_FIXED = [];
             sub_policies_DDP = leaf_nodes{1, 4};
             [X, U, c] = ForwardPassGeneral(sys_, sub_policies_DDP, starts);
+            save(strcat('data/iLQGGeneral', sys.name, '/decomp', num2str(sys.decomposition_id), '.mat'), 'sys', 'action_tree', 'initial_trajectories', 'p', 's', 'X', 'U', 'c');
             return;
         end
         
@@ -133,7 +135,6 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
             end
             sub_policies_LQR = cat(1, sub_policies_LQR, ...
                                    {U_DIMS_FREE, X_DIMS_FREE, sys.u0(U_DIMS_FREE), -K_, sys.l_point(X_DIMS_FREE)});
-
             sys_ = sys;
             sys_.X_DIMS_FREE = X_DIMS_FREE;
             sys_.X_DIMS_FIXED = linspace(1, sys_.X_DIMS, sys_.X_DIMS)';
@@ -144,11 +145,15 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
             sys_.U_DIMS_FIXED([U_DIMS_CONTROLLED; U_DIMS_FREE]) = [];
             Op.lims = sys_.lims(sys_.U_DIMS_FREE, :);
 
-            [X_DDP, k_DDP, K_DDP] = get_ilqg_trajectory(sys_, Op, starts(X_DIMS_FREE, :), ...
+            [X_DDP, k_DDP, K_DDP, ...
+             ~, ~, ~, ~, Xinit, Uinit, Cinit] = get_ilqg_trajectory(sys_, Op, starts(X_DIMS_FREE, :), ...
                                                         -K_, sub_policies_LQR_, sub_policies_DDP_);
+            
             sub_policies_DDP = cat(1, sub_policies_DDP, ...
                                    {U_DIMS_FREE, X_DIMS_FREE, k_DDP, K_DDP, X_DDP});
-            
+            initial_trajectories = cat(1, initial_trajectories, ...
+                                   {U_DIMS_FREE, X_DIMS_FREE, Xinit, Uinit, Cinit});
+
             % Update the parent node
             parent_input = leaf_nodes{ii, 5};
             parent_node_id = find(cellfun(@(x) isempty(setdiff(x, parent_input)) ...

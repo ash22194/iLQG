@@ -12,7 +12,6 @@ sys.I = diag([4.86*1e-3; 4.86*1e-3; 8.8*1e-3]);
 sys.dt = 0.001;
 sys.X_DIMS = 10; % z, ro, pi, ya, vx, vy, vz, vro, vpi, vya
 sys.U_DIMS = 4;
-sys.U_PSEUDO_DIMS = {[1];[2];[3];[4]};
 
 sys.l_point = [1; zeros(9,1)];
 sys.u0 = sys.m*sys.g*ones(sys.U_DIMS, 1)/sys.U_DIMS;

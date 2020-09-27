@@ -3,8 +3,7 @@ close all;
 clc;
 
 %% 
-
-system_name = 'manipulator2dof';
+system_name = 'cartpole';
 load(strcat('data/', system_name, 'System.mat'));
 sys.xu = [sys.x; sys.u];
 

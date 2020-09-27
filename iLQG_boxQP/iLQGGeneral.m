@@ -217,6 +217,9 @@ for iter = 1:Op.maxIter
     
     %====== STEP 1: Forward pass, differentiate dynamics and cost along new trajectory
     if flgChange
+        if ((size(sub_trajectories_close, 1) > 0) && (size(sub_trajectories_close{1,3}, 3) > 1))
+            disp('Check!!');
+        end
         t_diff = tic;
         [~,~,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = DYNCST(x, [u nan(m,1)], ...
                                                            sub_trajectories_close, ...
@@ -285,9 +288,9 @@ for iter = 1:Op.maxIter
                 xnew        = xnew(:,:,w);
                 unew        = unew(:,:,w);
                 for jj=1:1:size(sub_trajectories, 1)
-                    sub_trajectories_close{jj,3} = sub_trajectories_closenew{jj,3}(:,:,w);
-                    sub_trajectories_close{jj,4} = sub_trajectories_closenew{jj,4}(:,:,:,w);
-                    sub_trajectories_close{jj,5} = sub_trajectories_closenew{jj,5}(:,:,w);
+                    sub_trajectories_closenew{jj,3} = sub_trajectories_closenew{jj,3}(:,:,w);
+                    sub_trajectories_closenew{jj,4} = sub_trajectories_closenew{jj,4}(:,:,:,w);
+                    sub_trajectories_closenew{jj,5} = sub_trajectories_closenew{jj,5}(:,:,w);
                 end
             end
         else            % serial backtracking line-search
