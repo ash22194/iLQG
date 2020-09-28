@@ -39,7 +39,8 @@ function dc = dcostdx(sys, x, u, sub_policies)
     R_CF = sys.R(U_DIMS_CONTROLLED, U_DIMS_FREE);
     R_FC = sys.R(U_DIMS_FREE, U_DIMS_CONTROLLED);
     
-    dc = 2 * sys.Q(X_DIMS_FREE, X_DIMS_FREE) * (x - l_point(X_DIMS_FREE));
+    x_bar = sign(x - l_point(X_DIMS_FREE)).*mod(abs(x - l_point(X_DIMS_FREE)), sys.cxmod(X_DIMS_FREE));
+    dc = 2 * sys.Q(X_DIMS_FREE, X_DIMS_FREE) * x_bar;
     if (~isempty(U_DIMS_CONTROLLED))
         for ii=1:1:TRAJ_LENGTH
             dc(:, ii) = dc(:, ii) + K(:,:, ii)' * (R_CF + R_FC') * (max(lims(U_DIMS_FREE,1),...

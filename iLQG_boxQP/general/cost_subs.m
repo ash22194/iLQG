@@ -45,6 +45,7 @@ function c = cost_subs(sys, x, u, sub_policies)
     Q = sys.Q(X_DIMS_FREE, X_DIMS_FREE);
     X0 = l_point(X_DIMS_FREE);
     
-    c = diag((x - X0)'*Q*(x - X0) + (U - U0)'*R*(U - U0))';
+    x_bar = sign(x - X0).*mod(abs(x - X0), sys.cxmod(X_DIMS_FREE));
+    c = diag(x_bar'*Q*x_bar + (U - U0)'*R*(U - U0))';
 
 end
