@@ -255,7 +255,7 @@ for iter = 1:Op.maxIter
     trace(iter).grad_norm = g_norm;
     if g_norm < Op.tolGrad && lambda < 1e-5
         dlambda   = min(dlambda / Op.lambdaFactor, 1/Op.lambdaFactor);
-        lambda    = lambda * dlambda * (lambda > Op.lambdaMin);
+        lambda    = lambda * dlambda * ((lambda * dlambda) > Op.lambdaMin); % Minor fix (lambda > Op.lambdaMin) => ((lambda * dlambda) > Op.lambdaMin)
         if verbosity > 0
             fprintf('\nSUCCESS: gradient norm < tolGrad\n');
         end
@@ -339,7 +339,7 @@ for iter = 1:Op.maxIter
         
         % decrease lambda
         dlambda   = min(dlambda / Op.lambdaFactor, 1/Op.lambdaFactor);
-        lambda    = lambda * dlambda * (lambda > Op.lambdaMin);
+        lambda    = lambda * dlambda * ((lambda * dlambda) > Op.lambdaMin); % Minor fix (lambda > Op.lambdaMin) => ((lambda * dlambda) > Op.lambdaMin)
         
         % accept changes
         u                      = unew;
