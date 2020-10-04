@@ -1,4 +1,4 @@
-function [xnew,unew,cnew,sub_trajectories_close] = forward_pass_general(x0,u,L,x,du,...
+function [xnew,unew,ulast,cnew,sub_trajectories_close] = forward_pass_general(x0,u,L,x,du,...
                                                                         sub_trajectories,...
                                                                         Alpha,gamma_,DYNCST,lims,diff)
 % parallel forward-pass (rollout)
@@ -14,6 +14,7 @@ N        = size(u,2);
 xnew        = zeros(n,K,N);
 xnew(:,:,1) = x0(:,ones(1,K));
 unew        = zeros(m,K,N);
+ulast       = zeros(m,K,N);
 cnew        = zeros(1,K,N+1);
 sub_trajectories_close = cell(size(sub_trajectories));
 sub_trajectories_close(:, 1:2) = sub_trajectories(:, 1:2);
@@ -27,9 +28,11 @@ end
 discount = 1;
 for i = 1:N
     unew(:,:,i) = u(:,i*K1);
+    ulast(:,:,i) = u(:,i*K1);
     
     if ~isempty(du)
         unew(:,:,i) = unew(:,:,i) + du(:,i)*Alpha;
+        ulast(:,:,i) = ulast(:,:,i) + du(:,i)*Alpha;
     end    
     
     if ~isempty(L)
@@ -91,5 +94,6 @@ cnew(:,:,N+1) = discount*cnew(:,:,N+1);
 % put the time dimension in the columns
 xnew = permute(xnew, [1 3 2]);
 unew = permute(unew, [1 3 2]);
+ulast = permute(ulast, [1 3 2]);
 cnew = permute(cnew, [1 3 2]);
 end % forward pass

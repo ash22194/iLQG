@@ -15,15 +15,18 @@ function [X, U, c] = ForwardPassGeneral(sys, sub_policies, x_start)
         
         X(:, 1, kk) = x_start(:, kk);
         discount = 1;
+        sub_policies_tt = cell(size(sub_policies));
+        sub_policies_tt(:,1:2) = sub_policies(:,1:2);
         for tt = 1:1:NUM_CTRL
             closest_x = cellfun(@(x, y) min_index(vecnorm(X(x, tt, kk) - y(:,:, kk), 2, 1)), sub_policies(:, 2), sub_policies(:, 5));
+            
             for jj=1:1:size(sub_policies, 1)
-                U(sub_policies{jj, 1}, tt, kk) = sub_policies{jj, 3}(:, closest_x(jj), kk) ...
-                                                 + sub_policies{jj, 4}(:,:, closest_x(jj), kk) ...
-                                                   * (X(sub_policies{jj, 2}, tt, kk) - sub_policies{jj, 5}(:, closest_x(jj), kk));
+                sub_policies_tt{jj, 3} = sub_policies{jj, 3}(:, closest_x(jj), kk);
+                sub_policies_tt{jj, 4} = sub_policies{jj, 4}(:,:, closest_x(jj), kk);
+                sub_policies_tt{jj, 5} = sub_policies{jj, 5}(:, closest_x(jj), kk);
             end
-            U(:, tt, kk) = max(sys.lims(:,1), min(sys.lims(:,2), U(:, tt, kk)));
-            X(:, tt+1, kk) = dyn_finite(sys, X(:, tt, kk), U(:, tt, kk), sys.dt);
+            
+            X(:,tt+1, kk) = dyn_subs_finite(sys, X(:, tt, kk), zeros(0,1), sub_policies_tt, sys.dt); 
             c(kk) = c(kk) + discount * cost(sys, X(:, tt, kk), U(:, tt, kk)) * sys.dt;
             discount = discount * sys.gamma_;
         end
@@ -32,5 +35,5 @@ function [X, U, c] = ForwardPassGeneral(sys, sub_policies, x_start)
 end
 
 function out = min_index(x)
-    [~, out] = min(x);
+    [~, out] = min(x, [], 2);
 end
