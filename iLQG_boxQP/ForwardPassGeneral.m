@@ -19,14 +19,13 @@ function [X, U, c] = ForwardPassGeneral(sys, sub_policies, x_start)
         sub_policies_tt(:,1:2) = sub_policies(:,1:2);
         for tt = 1:1:NUM_CTRL
             closest_x = cellfun(@(x, y) min_index(vecnorm(X(x, tt, kk) - y(:,:, kk), 2, 1)), sub_policies(:, 2), sub_policies(:, 5));
-            
             for jj=1:1:size(sub_policies, 1)
                 sub_policies_tt{jj, 3} = sub_policies{jj, 3}(:, closest_x(jj), kk);
                 sub_policies_tt{jj, 4} = sub_policies{jj, 4}(:,:, closest_x(jj), kk);
                 sub_policies_tt{jj, 5} = sub_policies{jj, 5}(:, closest_x(jj), kk);
             end
             
-            X(:,tt+1, kk) = dyn_subs_finite(sys, X(:, tt, kk), zeros(0,1), sub_policies_tt, sys.dt); 
+            X(:,tt+1, kk) = dyn_subs_finite2(sys, X(:, tt, kk), zeros(0,1), sub_policies_tt, sys.dt); 
             c(kk) = c(kk) + discount * cost(sys, X(:, tt, kk), U(:, tt, kk)) * sys.dt;
             discount = discount * sys.gamma_;
         end
