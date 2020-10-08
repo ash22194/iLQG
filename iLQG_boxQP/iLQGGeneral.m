@@ -148,18 +148,20 @@ trace(1).dlambda = dlambda;
 if size(x0,2) == 1
     diverge = true;
     for alpha = Op.Alpha
-        [x,un,~,cost,sub_trajectories_close] = forward_pass_general(x0(:,1), alpha*u, [], [], [], ...
+        [x,un,ulast,cost,sub_trajectories_close] = forward_pass_general(x0(:,1), alpha*u, [], [], [], ...
                                                                   sub_trajectories, 1, Op.gamma_, ...
                                                                   DYNCST, Op.lims, []);
         % simplistic divergence test
         if all(abs(x(:)) < 1e8)
             u = un;
+            xlast = x;
             diverge = false;
             break
         end
     end
 elseif size(x0,2) == N+1 % pre-rolled initial forward pass
     x        = x0;
+    xlast    = x0;
     diverge  = false;
     if isempty(Op.cost)
         error('pre-rolled initial trajectory requires cost')
@@ -190,6 +192,7 @@ if diverge
     L        = zeros(m,n,N);
     cost     = [];
     trace    = trace(1);
+    sub_trajectories_close = sub_trajectories;
     if verbosity > 0
         fprintf('\nEXIT: Initial control sequence caused divergence\n');
     end
@@ -267,7 +270,7 @@ for iter = 1:Op.maxIter
     if backPassDone
         t_fwd = tic;
         if Op.parallel  % parallel line-search
-            [xnew,unew,ulast,costnew,...
+            [xnew,unew,ulastnew,costnew,...
              sub_trajectories_closenew] = forward_pass_general(x0, u, L, x(:,1:N), l, ...
                                                                sub_trajectories, ...
                                                                Op.Alpha, Op.gamma_, ...
@@ -287,8 +290,8 @@ for iter = 1:Op.maxIter
                 costnew     = costnew(:,:,w);
                 xnew        = xnew(:,:,w);
                 unew        = unew(:,:,w);
-                ulast       = ulast(:,:,w);
-                xlast       = x;
+                ulastnew    = ulastnew(:,:,w);
+                xlastnew    = x;
                 for jj=1:1:size(sub_trajectories, 1)
                     sub_trajectories_closenew{jj,3} = sub_trajectories_closenew{jj,3}(:,:,w);
                     sub_trajectories_closenew{jj,4} = sub_trajectories_closenew{jj,4}(:,:,:,w);
@@ -297,13 +300,13 @@ for iter = 1:Op.maxIter
             end
         else            % serial backtracking line-search
             for alpha = Op.Alpha
-                [xnew,unew,ulast,costnew, ...
+                [xnew,unew,ulastnew,costnew, ...
                  sub_trajectories_closenew]   = forward_pass_general(x0, u+l*alpha, L, x(:,1:N), [], ...
                                                                      sub_trajectories, 1, Op.gamma_, ...
                                                                      DYNCST, Op.lims, Op.diffFn);
                 dcost    = sum(cost(:)) - sum(costnew(:));
                 expected = -alpha*(dV(1) + alpha*dV(2));
-                xlast = x;
+                xlastnew = x;
                 if expected > 0
                     z = dcost/expected;
                 else
@@ -346,7 +349,9 @@ for iter = 1:Op.maxIter
         
         % accept changes
         u                      = unew;
+        ulast                  = ulastnew;
         x                      = xnew;
+        xlast                  = xlastnew;
         cost                   = costnew;
         sub_trajectories_close = sub_trajectories_closenew;
         flgChange              = 1;

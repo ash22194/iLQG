@@ -4,7 +4,7 @@ function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = system_cst(sys, x, u, sub_p
     final = isnan(u(1,:));
     u(:,final) = repmat(u0FREE, [1, sum(final)]);
     if (nargout == 2)
-        f = dyn_subs_finite(sys, x, u, sub_policies, sys.dt);
+        f = dyn_subs_finite2(sys, x, u, sub_policies, sys.dt);
         c = cost_subs(sys, x, u, sub_policies) * sys.dt;
     
     else

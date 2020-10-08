@@ -84,10 +84,10 @@ function [policies] = dp_decomposition(sys, Op, p, s)
             sys_.U_DIMS_FIXED = linspace(1, sys_.U_DIMS, sys_.U_DIMS)';
             sys_.U_DIMS_FIXED([U_DIMS_CONTROLLED; U_DIMS_FREE]) = [];
             
-            [policy, value, ~] = get_dp_solution(sys_, Op, sub_policies);
+            [policy, info] = get_dp_solution(sys_, Op, sub_policies);
             
             sub_policies = cat(1, sub_policies, ...
-                               {U_DIMS_FREE, X_DIMS_FREE, policy, value});
+                               {U_DIMS_FREE, X_DIMS_FREE, policy, info});
 
             % Update the parent node
             parent_input = leaf_nodes{ii, 4};

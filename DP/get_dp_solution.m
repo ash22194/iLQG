@@ -1,4 +1,4 @@
-function [policy, value, iter] = get_dp_solution(sys, Op, sub_policies)
+function [policy, info] = get_dp_solution(sys, Op, sub_policies)
 %% Parameters
     X_DIMS            = sys.X_DIMS;
     X_DIMS_FREE       = sys.X_DIMS_FREE;
@@ -83,9 +83,12 @@ function [policy, value, iter] = get_dp_solution(sys, Op, sub_policies)
     F = griddedInterpolant(x{X_DIMS_FREE}, G_);
     constant_policy_count = 0;
     iter = 0;
+    time_policy_eval = 0;
+    time_policy_update = 0;
+    time_total = 0;
     
 %% Policy Iteration
-
+    time_start = tic;
     while (iter < max_iter)
         iter = iter + 1;
         G = ones(size(G_));
@@ -98,6 +101,7 @@ function [policy, value, iter] = get_dp_solution(sys, Op, sub_policies)
         end
         
         cost_total = cost_fixed + cost_action;
+        time_policy_eval_start = tic;
         % Compute value function for current policy
          while ((max(abs(G_ - G), [], 'all') > gtol) && (policy_iter < max_policy_iter))
             % Iterate to estimate value function
@@ -111,6 +115,7 @@ function [policy, value, iter] = get_dp_solution(sys, Op, sub_policies)
             G_(goal_grid{:}) = 0;
             F.Values = G_;
         end
+        time_policy_eval = time_policy_eval + toc(time_policy_eval_start);
         clear 'G';
 
         % Update policy
@@ -120,6 +125,7 @@ function [policy, value, iter] = get_dp_solution(sys, Op, sub_policies)
         minG = G_;
         unew = u;
         u_ = u;
+        time_policy_update_start = tic;
         for i = 1:1:num_action_samples
             cost_action_ = 0;
             for uui=1:1:length(U_DIMS_FREE)
@@ -144,8 +150,8 @@ function [policy, value, iter] = get_dp_solution(sys, Op, sub_policies)
             end
         end
         
-        uerror_max = zeros(length(U_DIMS_FREE));
-        uerror_mean = zeros(length(U_DIMS_FREE));
+        uerror_max = zeros(length(U_DIMS_FREE), 1);
+        uerror_mean = zeros(length(U_DIMS_FREE), 1);
         for uui = 1:1:length(U_DIMS_FREE)
             uu = U_DIMS_FREE(uui);
             uerror = abs(unew{uu} - u{uu});
@@ -163,15 +169,23 @@ function [policy, value, iter] = get_dp_solution(sys, Op, sub_policies)
             disp(strcat('Constant Policy count : ', num2str(constant_policy_count)));
         else
             disp(strcat(sprintf('Iteration : %d,', iter), ...
-                        ' Max Err :', sprintf(' %.5f', uerror_max), ...
+                        ' Max Err :', sprintf(' %.3f', uerror_max), ...
                         ', Mean Err :', sprintf(' %.5f', uerror_mean)));
             constant_policy_count = 0;
         end
         
         u = unew;
+        time_policy_update = time_policy_update + toc(time_policy_update_start);
     end
+    time_total = toc(time_start);
     
 %% Return
     policy = u(U_DIMS_FREE);
-    value = G_;
+    info.state_grid = x(X_DIMS_FREE);
+    info.value = G_;
+    info.iter = iter;
+    info.time_total = time_total;
+    info.time_policy_eval = time_policy_eval;
+    info.time_policy_update = time_policy_update;
+
 end
