@@ -4,7 +4,7 @@ clc;
 
 %% 
 
-sys.n = 3;
+sys.n = 4;
 sys.name = strcat('manipulator', num2str(sys.n), 'dof');
 sys.m = sym('m', [sys.n, 1]);
 sys.l = sym('l', [sys.n, 1]);
@@ -73,9 +73,9 @@ sys.x = [sys.th; sys.dth];
 sys.u = sym('u', [sys.U_DIMS, 1]);
 
 sys.f = [sys.dth; sys.M\(sys.u - sys.C*sys.dth - sys.N)];
-sys.fxu = jacobian(sys.f, [sys.x; sys.u]);
-sys.fx = sys.fxu(:, 1:sys.X_DIMS);
-sys.fu = sys.fxu(:, (sys.X_DIMS+1):end);
+sys.fxfu = jacobian(sys.f, [sys.x; sys.u]);
+sys.fx = sys.fxfu(:, 1:sys.X_DIMS);
+sys.fu = sys.fxfu(:, (sys.X_DIMS+1):end);
 
 % Create Dynamics Files
 % mkdir(sys.name);
