@@ -148,9 +148,11 @@ if size(x0,2) == 1
         [x,un,ulast,cost,sub_trajectories_close] = forward_pass_general_kdtree(x0(:,1), alpha*u, [], [], [], ...
                                                                          sub_trajectories, Mdl, 1, Op.gamma_, ...
                                                                          DYNCST, Op.lims, []);
-        % simplistic divergence test
+        % simplified divergence test
         if all(abs(x(:)) < 1e8)
             u = un;
+            ulast = un;
+            xlast = x;
             diverge = false;
             break
         end
@@ -186,6 +188,8 @@ if diverge
     L        = zeros(m,n,N);
     cost     = [];
     trace    = trace(1);
+    x_last   = x;
+    u_last   = u;
     sub_trajectories_close = cell(0, size(sub_trajectories, 2));
     if verbosity > 0
         fprintf('\nEXIT: Initial control sequence caused divergence\n');

@@ -21,8 +21,10 @@ function c = cost_subs(sys, x, u, sub_policies)
     
     U = zeros(length(U_DIMS_FC), TRAJ_LENGTH);
     % Free actions
-    [~, U_DIMS_FREE] = find(U_DIMS_FREE == U_DIMS_FC');
-    U(U_DIMS_FREE, :) = u;
+    if (~isempty(U_DIMS_FREE))
+        [~, U_DIMS_FREE] = find(U_DIMS_FREE == U_DIMS_FC');
+        U(U_DIMS_FREE, :) = u;
+    end
     % Controlled actions
     for jj = 1:1:size(sub_policies, 1)
         U_SUBDIM = U_DIMS_CONTROLLED(sub_policies{jj, 1});

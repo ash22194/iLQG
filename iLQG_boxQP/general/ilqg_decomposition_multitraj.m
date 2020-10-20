@@ -146,9 +146,29 @@ function [X, U, c] = ilqg_decomposition_multitraj(sys, Op, p, s, starts)
             Op.lims = sys_.lims(sys_.U_DIMS_FREE, :);
             starts_unique = unique(starts(X_DIMS_FREE, :)', 'rows')';
             
-            [X_DDP, k_DDP, K_DDP, ...
-             ~, ~, ~, ~, Xinit, Uinit, Cinit] = get_ilqg_trajectory_multitraj_parallel(sys_, Op, starts_unique, ...
-                                                        -K_, sub_policies_LQR_, sub_policies_DDP_);
+            solution_found = false;
+            if (isfield(Op, 'reuse_policy'))
+                decomposition = load(Op.reuse_policy);
+                if (all(decomposition.p==p, 'all') && all(decomposition.s==s, 'all') && ~isempty(setdiff(linspace(1, sys.X_DIMS, sys.X_DIMS), X_DIMS_FREE)))
+                    subsystem_id = find(cellfun(@(x) isempty(setdiff(U_DIMS_FREE, x)) && isempty(setdiff(x, U_DIMS_FREE)), decomposition.action_tree{1,4}(:,1)));
+                    k_DDP = decomposition.action_tree{1,4}{subsystem_id, 3};
+                    K_DDP = decomposition.action_tree{1,4}{subsystem_id, 4};
+                    X_DDP = decomposition.action_tree{1,4}{subsystem_id, 5};
+                    
+                    subsystem_id_init = find(cellfun(@(x) isempty(setdiff(U_DIMS_FREE, x)) && isempty(setdiff(x, U_DIMS_FREE)), decomposition.initial_trajectories(:,1)));
+                    Xinit = decomposition.initial_trajectories{subsystem_id_init, 3};
+                    Uinit = decomposition.initial_trajectories{subsystem_id_init, 4};
+                    Cinit = decomposition.initial_trajectories{subsystem_id_init, 5};
+                    
+                    solution_found = true;
+                end
+            end
+            
+            if (~solution_found)
+                [X_DDP, k_DDP, K_DDP, ...
+                 ~, ~, ~, ~, Xinit, Uinit, Cinit] = get_ilqg_trajectory_multitraj_parallel(sys_, Op, starts_unique, ...
+                                                            -K_, sub_policies_LQR_, sub_policies_DDP_);
+            end
                         
             sub_policies_DDP = cat(1, sub_policies_DDP, ...
                                    {U_DIMS_FREE, X_DIMS_FREE, k_DDP, K_DDP, X_DDP});

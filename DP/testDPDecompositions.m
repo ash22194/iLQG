@@ -5,7 +5,8 @@ clc;
 %% 
 
 restoredefaultpath;
-system_name = 'cartpole';
+system_name = 'manipulator3dof';
+policy_type = 'cascaded';
 addpath(strcat('systems/', system_name));
 addpath('systems');
 load(strcat('data/',system_name,'System.mat'));
@@ -37,10 +38,23 @@ if (strcmp(system_name, 'cartpole'))
     Op.u_mean_tol = (sys.lims(:,2) - sys.lims(:,1)) * 2e-6;
     Op.u_max_tol = (sys.lims(:,2) - sys.lims(:,1)) / 12;
     
-    p = [0, 1;
-         1, 1];
-    s = [1,1,0,0;
-         0,0,1,1];
+    if (strcmp(policy_type, 'joint'))
+        p = [0, 1;
+             0, 1];
+        s = [1,1,1,1;
+             1,1,1,1];
+    elseif (strcmp(policy_type, 'cascaded'))
+        p = [0, 1;
+             1, 1];
+        s = [1,1,0,0;
+             0,0,1,1];
+    elseif (strcmp(policy_type, 'decoupled'))
+        p = [0, 1;
+             0, 2];
+        s = [1,1,0,0;
+             0,0,1,1];
+    end
+
     
 elseif (strcmp(system_name, 'biped2d'))
     sys.m = 72;
@@ -81,18 +95,27 @@ elseif (strcmp(system_name, 'biped2d'))
     Op.u_mean_tol = (sys.lims(:,2) - sys.lims(:,1)) * 2e-6;
     Op.u_max_tol = (sys.lims(:,2) - sys.lims(:,1)) / 12;
     
-    p = [3, 1;
-         3, 1;
-         0, 1;
-         0, 1];
-    s = [1,1,1,1,0,0;
-         1,1,1,1,0,0;
-         0,0,0,0,1,1;
-         0,0,0,0,1,1];
+    if (strcmp(policy_type, 'joint'))
+        p = [zeros(4,1), ones(4,1)];
+        s = ones(sys.U_DIMS, sys.X_DIMS);
+    elseif (strcmp(policy_type, 'cascaded'))
+        p = [3, 1; 3, 1; 0, 1; 0, 1];
+        s = [1,1,1,1,0,0;
+             1,1,1,1,0,0;
+             0,0,0,0,1,1;
+             0,0,0,0,1,1];
+    elseif (strcmp(policy_type, 'decoupled'))
+        p = [0, 1; 0, 1; 0, 2; 0, 2];
+        s = [1,1,1,1,0,0;
+             1,1,1,1,0,0;
+             0,0,0,0,1,1;
+             0,0,0,0,1,1];
+    end
 
 elseif (strcmp(system_name, 'manipulator2dof'))
-    sys.m = [2.5; 0.4]; % kg
-    sys.l = [0.5; 0.2]; % m
+    sys.m = [2.5; 0.5]/5; % kg
+    sys.l = [0.5; 0.25]/2; % m
+    Izz = sys.m.*((sys.l));
     sys.g = 9.81;
     sys.dt = 0.001;
     sys.X_DIMS = 4; % th1, th2, dth1, dth2
@@ -101,26 +124,40 @@ elseif (strcmp(system_name, 'manipulator2dof'))
     sys.goal = [pi;0;0;0];
     sys.u0 = zeros(sys.U_DIMS,1);
     Izz = sys.m.*((sys.l));
-    sys.Q = diag([8, 2, 0.1, 0.08]);
-    sys.R = diag(0.002*Izz(1)./Izz);
+    sys.Q = diag([8, 8, 0.5, 0.5]);
+    sys.R = diag(0.003*(Izz(1)./Izz).^2);
     sys.gamma_ = 0.997;
-    sys.limits = [0, 2*pi; 0, 2*pi; -3, 3; -3, 3];
-    sys.lims = [-15, 15; -5, 5]; % action limits
+    sys.limits = [0, 2*pi; -pi, pi; -3, 3; -3, 3];
+    sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
     
     Op.num_points = 31 * ones(1, sys.X_DIMS);
-    Op.num_action_samples = [15, 5];
+    Op.num_action_samples = [5, 5];
     Op.max_iter = 2000;
     Op.max_policy_iter = 100;
     Op.gtol = 1e-5;
     Op.u_mean_tol = (sys.lims(:,2) - sys.lims(:,1)) * 2e-6;
     Op.u_max_tol = (sys.lims(:,2) - sys.lims(:,1)) / 12;
     
-    p = [linspace(0,1,2)', ones(2,1)];
-    s = repmat(eye(2), [1,2]);
+    if (strcmp(policy_type, 'joint'))
+        p = [0, 1;
+             0, 1];
+        s = [1,1,1,1;
+             1,1,1,1];
+    elseif (strcmp(policy_type, 'cascaded'))
+        p = [0, 1;
+             1, 1];
+        s = [1,0,1,0;
+             0,1,0,1];
+    elseif (strcmp(policy_type, 'decoupled'))
+        p = [0, 1;
+             0, 2];
+        s = [1,0,1,0;
+             0,1,0,1];
+    end
     
 elseif (strcmp(system_name, 'manipulator3dof'))
-    sys.m = [4; 0.8; 0.16]; % kg
-    sys.l = [0.5; 0.25; 0.25]; % m
+    sys.m = [2.75; 0.55; 0.11]; % kg
+    sys.l = [0.5; 0.25; 0.125]; % m
     sys.g = 9.81;
     sys.dt = 0.001;
     sys.X_DIMS = 6; % th1, th2, th3, dth1, dth2, dth3
@@ -129,13 +166,13 @@ elseif (strcmp(system_name, 'manipulator3dof'))
     sys.goal = [pi;0;0;0;0;0];
     sys.u0 = zeros(sys.U_DIMS,1);
     Izz = sys.m.*((sys.l));
-    sys.Q = diag([25*ones(1, 3), 0.02*ones(1, 3)]);
-    sys.R = diag(0.002*Izz(1)./Izz);
+    sys.Q = diag([1.6*ones(1,3), 0.12*ones(1,3)]);
+    sys.R = diag(0.004*(Izz(1)./Izz));
     sys.gamma_ = 0.997;
     sys.limits = [0, 2*pi; 0, 2*pi; 0, 2*pi; -3, 3; -3, 3; -3, 3];
-    sys.lims = [-15, 15; -10, 10; -5, 5]; % action limits
+    sys.lims = [-16, 16; -7.5, 7.5; -1, 1]; % action limits
     
-    Op.num_points = 31 * ones(1, sys.X_DIMS);
+    Op.num_points = 21 * ones(1, sys.X_DIMS);
     Op.num_action_samples = [15, 10, 5];
     Op.max_iter = 2000;
     Op.max_policy_iter = 100;
@@ -143,9 +180,22 @@ elseif (strcmp(system_name, 'manipulator3dof'))
     Op.u_mean_tol = (sys.lims(:,2) - sys.lims(:,1)) * 2e-6;
     Op.u_max_tol = (sys.lims(:,2) - sys.lims(:,1)) / 12;
     
-    p = [linspace(0,1,3)', ones(3,1)];
-    s = repmat(eye(3), [1,2]);
+    if (strcmp(policy_type, 'joint'))
+        p = [zeros(3,1), ones(3,1)];
+        s = ones(sys.U_DIMS, sys.X_DIMS);
+    elseif (strcmp(policy_type, 'cascaded'))
+        p = [linspace(0,2,3)', ones(3,1)];
+        s = repmat(eye(3), [1,2]);
+    elseif (strcmp(policy_type, 'decoupled'))
+        p = [zeros(3,1), linspace(1,3,3)'];
+        s = repmat(eye(3), [1,2]);
+    end
     
 end
 
+% profile on;
 policies = dp_decomposition(sys, Op, p, s);
+% profile off;
+% profsave(profile('info'), 'data/DPcodeprofile');
+
+save(strcat('data/', system_name, '_', policy_type, '_policies.mat'), 'policies', 'sys');
