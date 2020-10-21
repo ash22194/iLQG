@@ -5,8 +5,9 @@ clc;
 %%
 
 restoredefaultpath;
-n = 4;
+n = 2;
 system_name = sprintf('manipulator%ddof', n);
+save_dir = 'data';
 addpath('general');
 addpath(strcat('new_systems/', system_name));
 load(strcat('new_systems/', system_name, '/sys.mat'), 'sys');
@@ -17,7 +18,7 @@ if (n==2)
     Izz = sys.m.*((sys.l));
     sys.Q = diag([8, 8, 0.5, 0.5])/5;
     sys.R = diag(0.003*(Izz(1)./Izz).^2);
-    sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
+    sys.lims = inf*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
 elseif (n==3)
     % The best so far
     sys.m = [2.5; 0.5; 0.1] * 1.1; % kg
@@ -68,7 +69,8 @@ Op.lims  = sys.lims;
 Op.maxIter = 500;
 Op.gamma_ = sys.gamma_;
 Op.print = 0;
-% Op.reuse_policy = 'data/iLQGGeneralmanipulator3dof/decomp1.mat';
+Op.save_dir = save_dir;
+Op.reuse_policy = false;
 % Op.Alpha = [1];
 
 theta_starts(:,:,1) = [2*pi/3, 2*pi/3, 4*pi/3, 4*pi/3;
