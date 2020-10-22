@@ -7,7 +7,7 @@ clc;
 restoredefaultpath;
 n = 2;
 system_name = sprintf('manipulator%ddof', n);
-save_dir = 'data/ilqg';
+save_dir = '/pylon5/cis200015p/akhadke/iLQG/iLQG_boxQP/data/ilqg';
 addpath('general');
 addpath(strcat('new_systems/', system_name));
 load(strcat('new_systems/', system_name, '/sys.mat'), 'sys');
@@ -87,8 +87,8 @@ elseif (n==4)
     Izz = sys.m.*((sys.l));
     sys.Q = diag([8*ones(1,4), 0.2*ones(1,4)])/2;
 %     sys.R = diag(0.004*(Izz(1)./Izz));
-    sys.R = diag([0.002; 0.004*(Izz(2)./Izz(2:end))]);
-    sys.lims = [-24, 24; -15, 15; -7.5, 7.5; -1, 1]; % action limits
+    sys.R = diag([0.004; 0.004*(Izz(2)./Izz(2:end))]);
+    sys.lims = [-inf, inf; -15, 15; -7.5, 7.5; -1, 1]; % action limits
 %     sys.lims = inf*[-ones(4,1), ones(4,1)];
 
     % Define decompositions to test
@@ -140,6 +140,8 @@ end
 
 % starts = starts(:, [1, round(size(starts, 2)/2), round(3*size(starts, 2)/4), end]);
 
+parpool('local', 28);
+
 %% Test Decompositions
 
 Xd = zeros(sys.X_DIMS, round(sys.T / sys.dt)+1, size(starts, 2), size(u_x, 1));
@@ -155,7 +157,6 @@ for d=1:1:size(u_x, 1)
     
 end
 
-% parpool('local', 16);
 %% Test Joint Optimization
 
 p_joint = [zeros(n,1), ones(n,1)];
