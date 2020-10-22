@@ -7,7 +7,7 @@ clc;
 restoredefaultpath;
 n = 2;
 system_name = sprintf('manipulator%ddof', n);
-save_dir = 'data';
+save_dir = 'data/ilqg';
 addpath('general');
 addpath(strcat('new_systems/', system_name));
 load(strcat('new_systems/', system_name, '/sys.mat'), 'sys');
