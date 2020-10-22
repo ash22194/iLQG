@@ -5,8 +5,8 @@ clc;
 %% 
 
 restoredefaultpath;
-system_name = 'manipulator3dof';
-policy_type = 'cascaded';
+system_name = 'cartpole';
+policy_type = 'decoupled';
 addpath(strcat('systems/', system_name));
 addpath('systems');
 load(strcat('data/',system_name,'System.mat'));
@@ -43,19 +43,23 @@ if (strcmp(system_name, 'cartpole'))
              0, 1];
         s = [1,1,1,1;
              1,1,1,1];
+        sys.decomposition_id = 0;
+        
     elseif (strcmp(policy_type, 'cascaded'))
         p = [0, 1;
              1, 1];
         s = [1,1,0,0;
              0,0,1,1];
+        sys.decomposition_id = 1;
+        
     elseif (strcmp(policy_type, 'decoupled'))
         p = [0, 1;
              0, 2];
         s = [1,1,0,0;
              0,0,1,1];
+        sys.decomposition_id = 2;
     end
-
-    
+   
 elseif (strcmp(system_name, 'biped2d'))
     sys.m = 72;
     sys.I = 3;
@@ -98,18 +102,23 @@ elseif (strcmp(system_name, 'biped2d'))
     if (strcmp(policy_type, 'joint'))
         p = [zeros(4,1), ones(4,1)];
         s = ones(sys.U_DIMS, sys.X_DIMS);
+        sys.decomposition_id = 0;
+        
     elseif (strcmp(policy_type, 'cascaded'))
         p = [3, 1; 3, 1; 0, 1; 0, 1];
         s = [1,1,1,1,0,0;
              1,1,1,1,0,0;
              0,0,0,0,1,1;
              0,0,0,0,1,1];
+        sys.decomposition_id = 1;
+        
     elseif (strcmp(policy_type, 'decoupled'))
         p = [0, 1; 0, 1; 0, 2; 0, 2];
         s = [1,1,1,1,0,0;
              1,1,1,1,0,0;
              0,0,0,0,1,1;
              0,0,0,0,1,1];
+        sys.decomposition_id = 2;
     end
 
 elseif (strcmp(system_name, 'manipulator2dof'))
@@ -143,16 +152,22 @@ elseif (strcmp(system_name, 'manipulator2dof'))
              0, 1];
         s = [1,1,1,1;
              1,1,1,1];
+        sys.decomposition_id = 0;
+        
     elseif (strcmp(policy_type, 'cascaded'))
         p = [0, 1;
              1, 1];
         s = [1,0,1,0;
              0,1,0,1];
+        sys.decomposition_id = 1;
+        
     elseif (strcmp(policy_type, 'decoupled'))
         p = [0, 1;
              0, 2];
         s = [1,0,1,0;
              0,1,0,1];
+        sys.decomposition_id = 2;
+        
     end
     
 elseif (strcmp(system_name, 'manipulator3dof'))
@@ -183,19 +198,24 @@ elseif (strcmp(system_name, 'manipulator3dof'))
     if (strcmp(policy_type, 'joint'))
         p = [zeros(3,1), ones(3,1)];
         s = ones(sys.U_DIMS, sys.X_DIMS);
+        sys.decomposition_id = 0;
+        
     elseif (strcmp(policy_type, 'cascaded'))
         p = [linspace(0,2,3)', ones(3,1)];
         s = repmat(eye(3), [1,2]);
+        sys.decomposition_id = 1;
+        
     elseif (strcmp(policy_type, 'decoupled'))
         p = [zeros(3,1), linspace(1,3,3)'];
         s = repmat(eye(3), [1,2]);
+        sys.decomposition_id = 2;
     end
-    
 end
+Op.save_dir = 'data';
 
 % profile on;
-policies = dp_decomposition(sys, Op, p, s);
+[policies, value, info] = dp_decomposition(sys, Op, p, s);
 % profile off;
 % profsave(profile('info'), 'data/DPcodeprofile');
 
-save(strcat('data/', system_name, '_', policy_type, '_policies.mat'), 'policies', 'sys');
+save(strcat(Op.save_dir, '/', system_name, '/decomp', num2str(sys.decomposition_id), '/summary.mat'), 'policies', 'value', 'info', 'sys');
