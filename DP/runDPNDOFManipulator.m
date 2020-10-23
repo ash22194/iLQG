@@ -109,7 +109,7 @@ Op.max_policy_iter = 100;
 Op.gtol = 1e-5;
 Op.u_mean_tol = (sys.lims(:,2) - sys.lims(:,1)) * 2e-6;
 Op.u_max_tol = (sys.lims(:,2) - sys.lims(:,1)) / 12;
-Op.save_dir = 'data/ddp';
+Op.save_dir = 'data';
 
 policies = cell(size(u_x,1), 1);
 value = cell(size(u_x,1), 1);
