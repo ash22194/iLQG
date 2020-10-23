@@ -10,6 +10,7 @@ function [policies, value, info] = dp_decomposition(sys, Op, p, s)
         Op.save_dir = '';
     end
     save_dir = strcat(Op.save_dir, '/', sys.name, '/decomp', num2str(sys.decomposition_id));
+    Op.save_dir = save_dir;
     if (~isdir(save_dir))
         mkdir(save_dir);
     end

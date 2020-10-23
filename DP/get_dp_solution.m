@@ -24,24 +24,50 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
     num_points         = Op.num_points;
     num_action_samples = prod(Op.num_action_samples(U_DIMS_FREE));
     
+    % Logging
+    save_dir       = Op.save_dir;
+    subsystem_id   = strcat('U', sprintf('%d', sys.U_DIMS_FREE), '_X', sprintf('%d', sys.X_DIMS_FREE));
+    save_file      = strcat(save_dir, '/', subsystem_id, '.mat');
+    if (isfield(Op, 'save_every')) 
+        save_every = Op.save_every; 
+    else 
+        save_every = max_iter / 10; 
+    end;
+    reuse_policy   = isfield(Op, 'reuse_policy') && (Op.reuse_policy) && (isfile(save_file));
+    
 %% Initialize 
     % Create state grids
-    x = cell(X_DIMS, 1);
-    x(X_DIMS_FIXED) = num2cell(goal(X_DIMS_FIXED));
-    grid_indices = cell(length(X_DIMS_FREE), 1);
-    for xxi = 1:1:length(X_DIMS_FREE)
-        xx = X_DIMS_FREE(xxi);
-        grid_indices{xxi} = linspace(limits(xx,1), limits(xx,2), num_points(xx));
-    end
-    [x{X_DIMS_FREE}] = ndgrid(grid_indices{:});
-    
     % Initialize policy grids - fixed, free and controlled
+    x = cell(X_DIMS, 1);
     u = cell(U_DIMS, 1);
+    x(X_DIMS_FIXED) = num2cell(goal(X_DIMS_FIXED));
     u(U_DIMS_FIXED) = num2cell(zeros(length(U_DIMS_FIXED), 1));
-    for uui = 1:1:length(U_DIMS_FREE)
-        uu = U_DIMS_FREE(uui);
-        u{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) * rand(num_points(X_DIMS_FREE));
+    if (reuse_policy)
+        decomposition  = load(save_file);
+        u(U_DIMS_FREE) = decomposition.policy;
+        info           = decomposition.info;
+        x(X_DIMS_FREE) = info.state_grid;
+        G_             = info.value;
+    else
+        for uui = 1:1:length(U_DIMS_FREE)
+                uu = U_DIMS_FREE(uui);
+                u{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) * rand(num_points(X_DIMS_FREE));
+        end
+        grid_indices = cell(length(X_DIMS_FREE), 1);
+        for xxi = 1:1:length(X_DIMS_FREE)
+            xx = X_DIMS_FREE(xxi);
+            grid_indices{xxi} = linspace(limits(xx,1), limits(xx,2), num_points(xx));
+        end
+        [x{X_DIMS_FREE}] = ndgrid(grid_indices{:});
+        G_ = zeros(num_points(X_DIMS_FREE));
+    
+        info.iter = 0;
+        info.time_total = 0;
+        info.time_policy_eval = 0;
+        info.time_policy_update = 0;
     end
+    
+    % Resize sub_policies
     for jj=1:1:size(sub_policies, 1)
         U_SUBDIM = sub_policies{jj,1};
         X_SUBDIM = sub_policies{jj,2};
@@ -79,18 +105,29 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
     end
     goal_grid = num2cell(goal_grid);
     
-    G_ = zeros(num_points(X_DIMS_FREE));
     F = griddedInterpolant(x{X_DIMS_FREE}, G_);
     constant_policy_count = 0;
-    iter = 0;
-    time_policy_eval = 0;
-    time_policy_update = 0;
-    time_total = 0;
+    iter = info.iter;
+    time_policy_eval = info.time_policy_eval;
+    time_policy_update = info.time_policy_update;
+    time_total = info.time_eval;
     
 %% Policy Iteration
     time_start = tic;
     while (iter < max_iter)
         iter = iter + 1;
+        if (mod(iter, save_every)==0)
+            policy = u(U_DIMS_FREE);
+            info.state_grid = x(X_DIMS_FREE);
+            info.value = G_;
+            info.iter = iter;
+            info.time_total = time_total;
+            info.time_policy_eval = time_policy_eval;
+            info.time_policy_update = time_policy_update;
+            sys_ = sys;
+            save(save_file, 'policy', 'info', 'sys_');
+        end
+        
         G = ones(size(G_));
         policy_iter = 0;
         cost_action = 0;
