@@ -173,3 +173,5 @@ sys.decomposition_id = 0;
 [Xjoint, Ujoint, cjoint] = ilqg_decomposition_multitraj(sys, Op, p_joint, s_joint, starts);
 
 err_ddp = mean(abs(reshape(cd, size(starts, 2), size(u_x, 1)) - cjoint'), 1);
+
+save(strcat(save_dir, '/', system_name, '/summary.mat'), 'sys', 'u_x', 'Xd', 'Ud', 'cd', 'Xjoint', 'Ujoint', 'cjoint', 'err_ddp');
