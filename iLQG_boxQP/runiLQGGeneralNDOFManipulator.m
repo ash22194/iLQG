@@ -7,7 +7,7 @@ clc;
 restoredefaultpath;
 n = 2;
 system_name = sprintf('manipulator%ddof', n);
-save_dir = '/pylon5/cis200015p/akhadke/iLQG/iLQG_boxQP/data/ilqg';
+save_dir = 'data';
 addpath('general');
 addpath(strcat('new_systems/', system_name));
 load(strcat('new_systems/', system_name, '/sys.mat'), 'sys');
@@ -15,12 +15,16 @@ load(strcat('new_systems/', system_name, '/sys.mat'), 'sys');
 sys.X_DIMS = 2*sys.n; % [thi, ... dthi, ...]
 sys.U_DIMS = sys.n;   % [taui]
 if (n==2)
-    sys.m = [2.5; 0.5]/5; % kg
-    sys.l = [0.5; 0.25]/2; % m
+%     sys.m = [0.5; 0.1]; % kg
+%     sys.l = [0.25; 0.125]; % m
+    sys.m = [2.5; 0.5]/2; % kg
+    sys.l = [0.5; 0.25]; % m
     Izz = sys.m.*((sys.l));
-    sys.Q = diag([8, 8, 0.5, 0.5])/5;
+%     sys.Q = diag([8, 8, 0.5, 0.5])/5;
+    sys.Q = diag([8, 8, 0.6, 0.6])/5;
     sys.R = diag(0.003*(Izz(1)./Izz).^2);
-    sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
+%     sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
+    sys.lims = 15*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
 
     % Define decompositions to test
     u_x = [];
@@ -98,7 +102,7 @@ elseif (n==4)
 
 end
 sys.g = 9.81; % m/s^2
-sys.T = 4;
+sys.T = 5;
 sys.dt = 0.001;
 
 sys.l_point = zeros(sys.X_DIMS, 1);
@@ -124,9 +128,10 @@ Op.reuse_policy = false;
 % Op.Alpha = [1];
 
 theta_starts(:,:,1) = [2*pi/3, 2*pi/3, 4*pi/3, 4*pi/3;
-                       -0.5,   0.5,      -0.5,    0.5];
+                       -1,   1,      -1,    1];
 theta_starts(:,:,2:n) = repmat([-pi/3, -pi/3, pi/3, pi/3;
-                                -0.5,    0.5,     -0.5,  0.5], [1,1,n-1]);
+                                -1,    1,     -1,  1], [1,1,n-1]);
+theta_starts(2,:,:) = 0.5*theta_starts(2,:,:);
 
 starts = zeros(sys.X_DIMS, size(theta_starts, 2)^n);
 for count = 1:1:size(starts,2)
@@ -139,8 +144,11 @@ for count = 1:1:size(starts,2)
 end
 
 % starts = starts(:, [1, round(size(starts, 2)/2), round(3*size(starts, 2)/4), end]);
+% u_x = u_x([4,1,7,6,3,2,5,8],:);
 
-parpool('local', 28);
+poolobj = gcp('nocreate');
+delete(poolobj);
+parpool('local', 16);
 
 %% Test Decompositions
 
@@ -153,7 +161,7 @@ for d=1:1:size(u_x, 1)
     sys.decomposition_id = d;
     p = reshape(u_x(d, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
     s = reshape(u_x(d, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
-    [Xd(:,:,:,d), Ud(:,:,:,d), cd(:,:,d)] = ilqg_decomposition_multitraj(sys, Op, p, s, starts);
+    [Xd(:,:,:,d), Ud(:,:,:,d), cd(:,:,d)] = ilqg_decomposition(sys, Op, p, s, starts);
     
 end
 
@@ -164,4 +172,4 @@ s_joint = ones(sys.U_DIMS, sys.X_DIMS);
 sys.decomposition_id = 0;
 [Xjoint, Ujoint, cjoint] = ilqg_decomposition_multitraj(sys, Op, p_joint, s_joint, starts);
 
-err_ddp = mean(reshape(cd, size(starts, 2), size(u_x, 1)) - cjoint', 1);
+err_ddp = mean(abs(reshape(cd, size(starts, 2), size(u_x, 1)) - cjoint'), 1);

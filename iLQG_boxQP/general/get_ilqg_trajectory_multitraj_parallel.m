@@ -99,7 +99,7 @@ function [X, k, K, sub_trajectories_close, ...
     K = zeros(length(sys.U_DIMS_FREE), length(sys.X_DIMS_FREE), NUM_CTRL, size(starts, 2));
     sub_trajectories_close = cell(size(sub_policies_DDP));
     sub_trajectories_close(:, 1:2) = sub_policies_DDP(:, 1:2);
-    sub_trajectories_close_ = cell(size(starts, 2));
+    sub_trajectories_close_ = cell(size(starts, 2), 1);
     
     parfor kk=1:1:size(starts, 2)
         
