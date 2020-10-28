@@ -4,7 +4,7 @@ clc;
 
 %% 
 
-sys.n = 3;
+sys.n = 4;
 sys.name = strcat('manipulator', num2str(sys.n), 'dof');
 sys.m = sym('m', [sys.n, 1]);
 sys.l = sym('l', [sys.n, 1]);
