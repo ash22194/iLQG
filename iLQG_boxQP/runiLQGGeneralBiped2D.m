@@ -18,6 +18,7 @@ sys.d = 0.2;
 sys.df = 0.5;
 sys.T = 4;
 sys.dt = 0.001;
+sys.fxfu_func = @(x, u) [dynx(sys, x, u), dynu(sys, x, u)];
 sys.X_DIMS = 6;
 sys.U_DIMS = 4;
 
@@ -32,21 +33,30 @@ sys.u0 = [sys.m*sys.g*cos(alpha2g)/sin(alpha1g - alpha2g);
           0;
           0];
 sys.fxu_func = @(x, u) [dynx(sys, x, u), dynu(sys, x, u)];
-sys.lims = 2*[0, 1.5*sys.m*sys.g;
-              0, 1.5*sys.m*sys.g;
-              -0.125*sys.m*sys.g, 0.125*sys.m*sys.g;
-              -0.125*sys.m*sys.g, 0.125*sys.m*sys.g];
+sys.lims = 1*[0, 1.6*sys.m*sys.g;
+              0, 1.6*sys.m*sys.g;
+              -0.3*sys.m*sys.g, 0.3*sys.m*sys.g;
+              -0.3*sys.m*sys.g, 0.3*sys.m*sys.g];
 
 sys.gamma_ = 0.999;
 sys.lambda_ = (1 - sys.gamma_)/sys.dt;
-sys.Q = diag([100, 200, 2, 2, 1000, 10]);
-sys.R = 0.000002*eye(4);
+sys.cxmod = zeros(sys.X_DIMS,1);
+sys.Q = diag([300, 600, 2, 2, 150, 1]);
+sys.R = diag([0.125*1e-6*ones(1, 2), 1e-7*ones(1, 2)]);
+% Decomposition works
+% sys.Q = diag([350, 700, 1, 1, 300, 0.6]);
+% sys.R = diag([2e-6*ones(1, 2), 1e-7*ones(1, 2)]);
+% Works to some extent
+% sys.Q = diag([150, 100, 3, 3, 75, 1.5]);
+% sys.R = diag([0.0002, 0.0002, 0.0000002, 0.0000002]);
+sys.u0init = false;
 sys.full_DDP = false;
 
 % Optimization parameters
 Op.lims  = sys.lims;
 Op.maxIter = 500;
 Op.gamma_ = sys.gamma_;
+Op.print = 0;
 % Op.Alpha = [1];
 
 com_pos = [0.95, 0.95, 1.0, 1.0;
@@ -71,20 +81,59 @@ for cp=1:1:size(com_pos, 2)
         end
     end
 end
-starts = starts(:,[1, end]);
+% starts = starts(:,[1, 2, 9, 13]);
 
 %% Test Decompositions
-p = [3,1;
-     3,1;
-     0,1;
-     0,1];
-s = [1,1,1,1,1,1;
-     1,1,1,1,1,1;
-     0,0,0,0,0,0;
-     0,0,0,0,0,0];
-u_x = [reshape(p, 1,2*sys.U_DIMS), reshape(s, 1,sys.U_DIMS*sys.X_DIMS)];
 
-sys.u0init = false;
+u_x = [];
+% F - COM, T - All
+p = [3,1; 3,1; 0,1; 0,1];
+s = [ones(2,4), zeros(2,2);
+     zeros(2,4), ones(2,2)];
+u_x = [u_x; reshape(p, 1,2*sys.U_DIMS), reshape(s, 1,sys.U_DIMS*sys.X_DIMS)];
+
+% T - Torso, F - All
+p = [0,1; 0,1; 1,1; 1,1];
+s = [ones(2,4), zeros(2,2);
+     zeros(2,4), ones(2,2)];
+u_x = [u_x; reshape(p, 1,2*sys.U_DIMS), reshape(s, 1,sys.U_DIMS*sys.X_DIMS)];
+
+% T - All, F - All
+p = [0,1; 0,1; 1,1; 1,1];
+s = [zeros(2,6);
+     ones(2,6)];
+u_x = [u_x; reshape(p, 1,2*sys.U_DIMS), reshape(s, 1,sys.U_DIMS*sys.X_DIMS)];
+
+% F - All, T - All
+p = [3,1; 3,1; 0,1; 0,1];
+s = [ones(2,6);
+     zeros(2,6)];
+u_x = [u_x; reshape(p, 1,2*sys.U_DIMS), reshape(s, 1,sys.U_DIMS*sys.X_DIMS)];
+
+% T - Torso, F - COM
+p = [0,1; 0,1; 0,2; 0,2];
+s = [ones(2,4), zeros(2,2);
+     zeros(2,4), ones(2,2)];
+u_x = [u_x; reshape(p, 1,2*sys.U_DIMS), reshape(s, 1,sys.U_DIMS*sys.X_DIMS)];
+
+% F - Torso, T - All
+p = [3,1; 3,1; 0,1; 0,1];
+s = [zeros(2,4), ones(2,2);
+     ones(2,4), zeros(2,2)];
+u_x = [u_x; reshape(p, 1,2*sys.U_DIMS), reshape(s, 1,sys.U_DIMS*sys.X_DIMS)];
+
+% T - COM, F - All
+p = [0,1; 0,1; 1,1; 1,1];
+s = [zeros(2,4), ones(2,2);
+     ones(2,4), zeros(2,2)];
+u_x = [u_x; reshape(p, 1,2*sys.U_DIMS), reshape(s, 1,sys.U_DIMS*sys.X_DIMS)];
+
+% T - COM, F - Torso
+p = [0,1; 0,1; 0,2; 0,2];
+s = [zeros(2,4), ones(2,2);
+     ones(2,4), zeros(2,2)];
+u_x = [u_x; reshape(p, 1,2*sys.U_DIMS), reshape(s, 1,sys.U_DIMS*sys.X_DIMS)];
+
 Xd = zeros(sys.X_DIMS, round(sys.T / sys.dt)+1, size(starts, 2), size(u_x, 1));
 Ud = zeros(sys.U_DIMS, round(sys.T / sys.dt), size(starts, 2), size(u_x, 1));
 cd = zeros(1, size(starts, 2), size(u_x, 1));
@@ -95,38 +144,16 @@ for d=1:1:size(u_x, 1)
     sys.decomposition_id = d;
     p = reshape(u_x(d, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
     s = reshape(u_x(d, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
-    [Xd(:,:,:,d), Ud(:,:,:,d), cd(:,:,d)] = ilqg_decomposition(sys, Op, p, s, starts);
-    
-end
-
-sys.u0init = true;
-sys.name = 'biped2dwu0';
-Xdwu0 = zeros(sys.X_DIMS, round(sys.T / sys.dt)+1, size(starts, 2), size(u_x, 1));
-Udwu0 = zeros(sys.U_DIMS, round(sys.T / sys.dt), size(starts, 2), size(u_x, 1));
-cdwu0 = zeros(1, size(starts, 2), size(u_x, 1));
-
-for d=1:1:size(u_x, 1)
-    
-    fprintf('Decomposition : %d / %d\n', d, size(u_x, 1));
-    sys.decomposition_id = d;
-    p = reshape(u_x(d, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
-    s = reshape(u_x(d, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
-    [Xdwu0(:,:,:,d), Udwu0(:,:,:,d), cdwu0(:,:,d)] = ilqg_decomposition(sys, Op, p, s, starts);
+    [Xd(:,:,:,d), Ud(:,:,:,d), cd(:,:,d)] = ilqg_decomposition_multitraj(sys, Op, p, s, starts);
     
 end
 
 %% Test Joint Optimization
 
-sys.u0init = false;
 sys.name = 'biped2d';
 p_joint = [zeros(sys.U_DIMS,1), ones(sys.U_DIMS,1)];
 s_joint = ones(sys.U_DIMS, sys.X_DIMS);
 sys.decomposition_id = 0;
-[Xjoint, Ujoint, cjoint] = ilqg_decomposition(sys, Op, p_joint, s_joint, starts);
+[Xjoint, Ujoint, cjoint] = ilqg_decomposition_multitraj(sys, Op, p_joint, s_joint, starts);
 
-sys.u0init = true;
-sys.name = 'biped2dwu0';
-p_joint = [zeros(sys.U_DIMS,1), ones(sys.U_DIMS,1)];
-s_joint = ones(sys.U_DIMS, sys.X_DIMS);
-sys.decomposition_id = 0;
-[Xjointwu0, Ujointwu0, cjointwu0] = ilqg_decomposition(sys, Op, p_joint, s_joint, starts);
+err_ddp = mean(reshape(cd, size(starts, 2), size(u_x, 1)) - cjoint', 1);

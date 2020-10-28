@@ -7,34 +7,110 @@ clc;
 restoredefaultpath;
 n = 2;
 system_name = sprintf('manipulator%ddof', n);
+save_dir = '/pylon5/cis200015p/akhadke/iLQG/iLQG_boxQP/data/ilqg';
 addpath('general');
 addpath(strcat('new_systems/', system_name));
 load(strcat('new_systems/', system_name, '/sys.mat'), 'sys');
 
+sys.X_DIMS = 2*sys.n; % [thi, ... dthi, ...]
+sys.U_DIMS = sys.n;   % [taui]
 if (n==2)
-    sys.m = [2.5; 0.5]; % kg
-    sys.l = [0.5; 0.25]; % m
+    sys.m = [2.5; 0.5]/5; % kg
+    sys.l = [0.5; 0.25]/2; % m
+    Izz = sys.m.*((sys.l));
+    sys.Q = diag([8, 8, 0.5, 0.5])/5;
+    sys.R = diag(0.003*(Izz(1)./Izz).^2);
+    sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
+
+    % Define decompositions to test
+    u_x = [];
+    
+    % Cascaded
+    p = [0, 1;1, 1];
+    s = [1, 0, 1, 0;0, 1, 0, 1];
+    u_x = [u_x; reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    
+    p = [0, 1;1, 1];
+    s = [0, 1, 0, 1;1, 0, 1, 0];
+    u_x = [u_x; reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    
+    p = [0, 1;1, 1];
+    s = [0, 0, 0, 0;1, 1, 1, 1];
+    u_x = [u_x; reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    
+    p = [2, 1;0, 1];
+    s = [1, 0, 1, 0;0, 1, 0, 1];
+    u_x = [u_x; reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    
+    p = [2, 1;0, 1];
+    s = [0, 1, 0, 1;1, 0, 1, 0];
+    u_x = [u_x; reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    
+    p = [2, 1;0, 1];
+    s = [1, 1, 1, 1;0, 0, 0, 0];
+    u_x = [u_x; reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    
+    % Decoupled
+    p = [0, 1;0, 2];
+    s = [1, 0, 1, 0;0, 1, 0, 1];
+    u_x = [u_x; reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    
+    p = [0, 1;0, 2];
+    s = [0, 1, 0, 1;1, 0, 1, 0];
+    u_x = [u_x; reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    
 elseif (n==3)
-    sys.m = [12.5; 1.25; 0.125]; % kg
-    sys.l = [0.6;  0.2;  0.067]; % m
+    % The best so far
+    sys.m = [2.5; 0.5; 0.1] * 1.1; % kg
+    sys.l = [0.5; 0.25; 0.125]; % m
+    Izz = sys.m.*((sys.l));
+    sys.Q = diag([8*ones(1,3), 0.6*ones(1,3)])/5;
+%     sys.R = diag(0.004*(Izz(2)./Izz).^2);
+%     sys.R = diag([0.002; 0.004*(Izz(2)./Izz(2:3)).^2]);
+    sys.R = diag(0.004*(Izz(1)./Izz));
+    sys.lims = [-16, 16; -7.5, 7.5; -1, 1]; % action limits
+%     sys.m = [2.5; 0.5; 0.125]; % kg
+%     sys.l = [0.5; 0.25; 0.125]; % m
+%     Izz = sys.m.*((sys.l));
+%     sys.Q = diag([8*ones(1,3), 0.5*ones(1,3)])/5;
+%     sys.R = diag(0.002*(Izz(1)./Izz).^2);
+%     sys.lims = 24*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
+
+    % Define decompositions to test
+    p = [linspace(0,n-1,n)', ones(n,1)];
+    s = repmat(eye(n), [1, 2]);
+    u_x = [reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+
+elseif (n==4)
+    sys.m = [5.4; 1.8; 0.6; 0.2]; % kg
+    sys.l = [0.2; 0.5; 0.25; 0.125]; % m
+    Izz = sys.m.*((sys.l));
+    sys.Q = diag([8*ones(1,4), 0.2*ones(1,4)])/2;
+%     sys.R = diag(0.004*(Izz(1)./Izz));
+    sys.R = diag([0.004; 0.004*(Izz(2)./Izz(2:end))]);
+    sys.lims = [-inf, inf; -15, 15; -7.5, 7.5; -1, 1]; % action limits
+%     sys.lims = inf*[-ones(4,1), ones(4,1)];
+
+    % Define decompositions to test
+    p = [linspace(0,n-1,n)', ones(n,1)];
+    s = repmat(eye(n), [1, 2]);
+    u_x = [reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+
 end
 sys.g = 9.81; % m/s^2
 sys.T = 4;
 sys.dt = 0.001;
-sys.X_DIMS = 2*sys.n; % [thi, ... dthi, ...]
-sys.U_DIMS = sys.n;   % [taui] 
 
 sys.l_point = zeros(sys.X_DIMS, 1);
 sys.l_point(1) = pi;
 sys.goal = sys.l_point;
 sys.u0 = zeros(sys.U_DIMS, 1);
 sys.fxfu_func = @(x, u) [dynx(sys, x, u), dynu(sys, x, u)];
-sys.lims = inf*[-ones(sys.n,1), ones(sys.n,1)]; % action limits
 
 sys.gamma_ = 0.997;
 sys.lambda_ = (1 - sys.gamma_)/sys.dt;
-sys.Q = diag([25*ones(1, sys.n), 0.02*ones(1, sys.n)]);
-sys.R = diag(0.001*ones(1, sys.n));
+sys.cxmod = zeros(sys.X_DIMS,1);
+% sys.cxmod = [2*pi; zeros(sys.X_DIMS - 1, 1)];
 sys.full_DDP = false;
 sys.u0init = false;
 
@@ -42,12 +118,15 @@ sys.u0init = false;
 Op.lims  = sys.lims;
 Op.maxIter = 500;
 Op.gamma_ = sys.gamma_;
+Op.print = 0;
+Op.save_dir = save_dir;
+Op.reuse_policy = false;
 % Op.Alpha = [1];
 
 theta_starts(:,:,1) = [2*pi/3, 2*pi/3, 4*pi/3, 4*pi/3;
-                       -1,     1,      -1,     1];
+                       -0.5,   0.5,      -0.5,    0.5];
 theta_starts(:,:,2:n) = repmat([-pi/3, -pi/3, pi/3, pi/3;
-                                -1,    1,     -1,   1], [1,1,n-1]);
+                                -0.5,    0.5,     -0.5,  0.5], [1,1,n-1]);
 
 starts = zeros(sys.X_DIMS, size(theta_starts, 2)^n);
 for count = 1:1:size(starts,2)
@@ -59,28 +138,32 @@ for count = 1:1:size(starts,2)
     end
 end
 
+% starts = starts(:, [1, round(size(starts, 2)/2), round(3*size(starts, 2)/4), end]);
+
+parpool('local', 28);
+
 %% Test Decompositions
 
-% p = [linspace(0,n-1,n)', ones(n,1)];
-% s = repmat(eye(n), [1, n]);
-% u_x = [reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
-% 
-% Xd = zeros(sys.X_DIMS, round(sys.T / sys.dt)+1, size(starts, 2), size(u_x, 1));
-% Ud = zeros(sys.U_DIMS, round(sys.T / sys.dt), size(starts, 2), size(u_x, 1));
-% cd = zeros(1, size(starts, 2), size(u_x, 1));
-% for d=1:1:size(u_x, 1)
-%     
-%     fprintf('Decomposition : %d / %d\n', d, size(u_x, 1));
-%     sys.decomposition_id = d;
-%     p = reshape(u_x(d, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
-%     s = reshape(u_x(d, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
-%     [Xd(:,:,:,d), Ud(:,:,:,d), cd(:,:,d)] = ilqg_decomposition(sys, Op, p, s, starts);
-%     
-% end
+Xd = zeros(sys.X_DIMS, round(sys.T / sys.dt)+1, size(starts, 2), size(u_x, 1));
+Ud = zeros(sys.U_DIMS, round(sys.T / sys.dt), size(starts, 2), size(u_x, 1));
+cd = zeros(1, size(starts, 2), size(u_x, 1));
+for d=1:1:size(u_x, 1)
+    
+    fprintf('Decomposition : %d / %d\n', d, size(u_x, 1));
+    sys.decomposition_id = d;
+    p = reshape(u_x(d, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
+    s = reshape(u_x(d, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
+    [Xd(:,:,:,d), Ud(:,:,:,d), cd(:,:,d)] = ilqg_decomposition_multitraj(sys, Op, p, s, starts);
+    
+end
 
 %% Test Joint Optimization
 
 p_joint = [zeros(n,1), ones(n,1)];
 s_joint = ones(sys.U_DIMS, sys.X_DIMS);
 sys.decomposition_id = 0;
-[Xjoint, Ujoint, cjoint] = ilqg_decomposition(sys, Op, p_joint, s_joint, starts);
+[Xjoint, Ujoint, cjoint] = ilqg_decomposition_multitraj(sys, Op, p_joint, s_joint, starts);
+
+err_ddp = mean(reshape(cd, size(starts, 2), size(u_x, 1)) - cjoint', 1);
+
+save(strcat(save_dir, '/', system_name, '/summary.mat'), 'sys', 'u_x', 'Xd', 'Ud', 'cd', 'Xjoint', 'Ujoint', 'cjoint', 'err_ddp');

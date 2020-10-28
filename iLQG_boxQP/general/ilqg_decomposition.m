@@ -4,7 +4,16 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
     % Op     - optimization parameters
     % (p,s)  - action tree and state assignment for the decomposition
     % starts - start states for ilqg calculations
-    
+
+%% Logging
+    if (~isfield(Op, 'save_dir'))
+        Op.save_dir = '';
+    end
+    save_dir = strcat(Op.save_dir, '/', sys.name, '/decomp', num2str(sys.decomposition_id));
+    if (~isdir(save_dir))
+        mkdir(save_dir);
+    end
+
 %%  Build action tree
     p = round(p);
     s = logical(round(s));
@@ -37,15 +46,6 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
             queue{end+1} = {curr_children{jj}; curr_node};
         end
         
-%         sub_policies_LQR = cell(size(curr_children, 1), 5);
-%         sub_policies_DDP = cell(size(curr_children, 1), 5);
-%         for jj=1:1:length(childID)
-%             sub_policies_LQR{jj, 1} = curr_children{jj};
-%             sub_policies_DDP{jj, 1} = sub_policies_LQR{jj, 1};
-%             
-%             sub_policies_LQR{jj, 2} = find(s(curr_children{jj}(1), :))';
-%             sub_policies_DDP{jj, 2} = sub_policies_LQR{jj, 2};
-%         end
         sub_policies_LQR = cell(0, 5);
         sub_policies_DDP = cell(0, 5);
         action_tree(end+1, :) = {curr_node, curr_state, ...
@@ -74,7 +74,7 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
             sys_.U_DIMS_FIXED = [];
             sub_policies_DDP = leaf_nodes{1, 4};
             [X, U, c] = ForwardPassGeneral(sys_, sub_policies_DDP, starts);
-            save(strcat('data/iLQGGeneral', sys.name, '/decomp', num2str(sys.decomposition_id), '.mat'), 'sys', 'action_tree', 'initial_trajectories', 'p', 's', 'X', 'U', 'c');
+            save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'initial_trajectories', 'p', 's', 'X', 'U', 'c');
             return;
         end
         
@@ -145,9 +145,24 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
             sys_.U_DIMS_FIXED([U_DIMS_CONTROLLED; U_DIMS_FREE]) = [];
             Op.lims = sys_.lims(sys_.U_DIMS_FREE, :);
 
-            [X_DDP, k_DDP, K_DDP, ...
-             ~, ~, ~, ~, Xinit, Uinit, Cinit] = get_ilqg_trajectory(sys_, Op, starts(X_DIMS_FREE, :), ...
-                                                        -K_, sub_policies_LQR_, sub_policies_DDP_);
+            subsystem_id = strcat('U', sprintf('%d', U_DIMS_FREE), '_X', sprintf('%d', X_DIMS_FREE));
+            if (isfield(Op, 'reuse_policy') && (Op.reuse_policy) && isfile(strcat(save_dir, '/', subsystem_id, '.mat')))
+                
+                decomposition = load(strcat(save_dir, '/', subsystem_id, '.mat'));
+                Xinit = decomposition.Xinit;
+                Uinit = decomposition.Uinit;
+                Cinit = decomposition.Cinit;
+                
+                X_DDP = decomposition.X_DDP;
+                k_DDP = decomposition.k_DDP;
+                K_DDP = decomposition.K_DDP;
+            else
+                [X_DDP, k_DDP, K_DDP, ...
+                 ~, ~, ~, ~, Xinit, Uinit, Cinit] = get_ilqg_trajectory(sys_, Op, starts(X_DIMS_FREE,:), ...
+                                                            -K_, sub_policies_LQR_, sub_policies_DDP_);
+                
+                save(strcat(save_dir, '/', subsystem_id, '.mat'), 'X_DDP', 'k_DDP', 'K_DDP', 'Xinit', 'Uinit', 'Cinit', 'sys_');
+            end
             
             sub_policies_DDP = cat(1, sub_policies_DDP, ...
                                    {U_DIMS_FREE, X_DIMS_FREE, k_DDP, K_DDP, X_DDP});

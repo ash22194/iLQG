@@ -1,10 +1,20 @@
-function [policies] = dp_decomposition(sys, Op, p, s)
+function [policies, value, info] = dp_decomposition(sys, Op, p, s)
 %%  Inputs
     % sys    - system description
     % Op     - optimization parameters
     % (p,s)  - action tree and state assignment for the decomposition
     % starts - start states for ilqg calculations
-    
+
+%% Logging
+    if (~isfield(Op, 'save_dir'))
+        Op.save_dir = '';
+    end
+    save_dir = strcat(Op.save_dir, '/', sys.name, '/decomp', num2str(sys.decomposition_id));
+    Op.save_dir = save_dir;
+    if (~isdir(save_dir))
+        mkdir(save_dir);
+    end
+
 %%  Build action tree
     p = round(p);
     s = logical(round(s));
@@ -50,15 +60,43 @@ function [policies] = dp_decomposition(sys, Op, p, s)
         leaf_nodes = action_tree(leaf_node_ids, :);
     
         if (size(leaf_nodes, 1)==1 && all(leaf_nodes{1,1}==0))
-            % Compute the final trajectories
-            sys_ = sys;
-            sys_.X_DIMS_FREE = linspace(1, sys_.X_DIMS, sys_.X_DIMS)';
-            sys_.X_DIMS_FIXED = [];
-            sys_.U_DIMS_FREE = [];
-            sys_.U_DIMS_CONTROLLED = linspace(1, sys_.U_DIMS, sys_.U_DIMS)';
-            sys_.U_DIMS_FIXED = [];
-            policies = leaf_nodes{1, 3};
-            return;
+            if (isfield(Op, 'reuse_policy') && Op.reuse_policy && isfile(strcat(save_dir, '/final.mat')))
+            	load(strcat(save_dir, '/final.mat'), 'policies', 'value', 'info');
+            	return;
+            else
+            	% Compute the final trajectories
+            	sys_ = sys;
+            	sys_.X_DIMS_FREE = (1:sys_.X_DIMS)';
+            	sys_.X_DIMS_FIXED = [];
+            	sys_.U_DIMS_FREE = [];
+            	sys_.U_DIMS_CONTROLLED = (1:sys_.U_DIMS)';
+            	sys_.U_DIMS_FIXED = [];
+            	sub_policies = leaf_nodes{1, 3};
+            	[value, info] = policy_evaluation(sys_, Op, sub_policies);
+            
+            	policies = cell(sys.U_DIMS, 1);
+           	info.time_policy_eval = info.time_total;
+            	info.time_policy_update = 0;
+            	for uu=1:1:size(sub_policies, 1)
+                	info.time_total = info.time_total + sub_policies{uu,4}.time_total;
+                	info.time_total = info.time_policy_eval + sub_policies{uu,4}.time_policy_eval;
+                	info.time_total = info.time_policy_update + sub_policies{uu,4}.time_policy_update;
+                
+                	U_SUBDIM = sub_policies{uu,1};
+                	X_SUBDIM = sub_policies{uu,2};
+                	X_SUBDIM_BAR = 1:sys_.X_DIMS;
+                	X_SUBDIM_BAR(X_SUBDIM) = [];
+
+                	subpolicy_size = Op.num_points;
+                	subpolicy_size(X_SUBDIM_BAR) = 1;
+                	subpolicy_newsize = Op.num_points;
+                	subpolicy_newsize(X_SUBDIM) = 1;
+
+                	policies(U_SUBDIM) = cellfun(@(x) repmat(reshape(x, subpolicy_size), subpolicy_newsize), sub_policies{uu,3}, 'UniformOutput', false);
+            	end
+            	save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'policies', 'value', 'info', 'p', 's');
+            	return;
+            end
         end
         
         % Compute DP solutions for all leaf nodes and update the action tree
@@ -84,8 +122,15 @@ function [policies] = dp_decomposition(sys, Op, p, s)
             sys_.U_DIMS_FIXED = linspace(1, sys_.U_DIMS, sys_.U_DIMS)';
             sys_.U_DIMS_FIXED([U_DIMS_CONTROLLED; U_DIMS_FREE]) = [];
             
-            [policy, info] = get_dp_solution(sys_, Op, sub_policies);
-            
+            subsystem_id = strcat('U', sprintf('%d', U_DIMS_FREE), '_X', sprintf('%d', X_DIMS_FREE));
+            if (isfield(Op, 'reuse_policy') && (Op.reuse_policy) && isfile(strcat(save_dir, '/', subsystem_id, '.mat')))
+                decomposition = load(strcat(save_dir, '/', subsystem_id, '.mat'));
+                policy = decomposition.policy;
+                info = decomposition.info;
+            else
+                [policy, info] = get_dp_solution(sys_, Op, sub_policies);
+                save(strcat(save_dir, '/', subsystem_id, '.mat'), 'policy', 'info', 'sys_');
+            end
             sub_policies = cat(1, sub_policies, ...
                                {U_DIMS_FREE, X_DIMS_FREE, policy, info});
 
