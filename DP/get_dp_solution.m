@@ -27,7 +27,7 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
     % Logging
     save_dir       = Op.save_dir;
     subsystem_id   = strcat('U', sprintf('%d', sys.U_DIMS_FREE), '_X', sprintf('%d', sys.X_DIMS_FREE));
-    save_file      = strcat(save_dir, '/', subsystem_id, '.mat');
+    save_file      = strcat(save_dir, '/', subsystem_id, '_interm.mat');
     if (isfield(Op, 'save_every')) 
         save_every = Op.save_every; 
     else 
@@ -42,6 +42,12 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
     u = cell(U_DIMS, 1);
     x(X_DIMS_FIXED) = num2cell(goal(X_DIMS_FIXED));
     u(U_DIMS_FIXED) = num2cell(zeros(length(U_DIMS_FIXED), 1));
+    grid_indices = cell(length(X_DIMS_FREE), 1);
+    for xxi = 1:1:length(X_DIMS_FREE)
+        xx = X_DIMS_FREE(xxi);
+        grid_indices{xxi} = linspace(limits(xx,1), limits(xx,2), num_points(xx));
+    end
+
     if (reuse_policy)
         decomposition  = load(save_file);
         u(U_DIMS_FREE) = decomposition.policy;
@@ -50,13 +56,8 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
         G_             = info.value;
     else
         for uui = 1:1:length(U_DIMS_FREE)
-                uu = U_DIMS_FREE(uui);
-                u{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) * rand(num_points(X_DIMS_FREE));
-        end
-        grid_indices = cell(length(X_DIMS_FREE), 1);
-        for xxi = 1:1:length(X_DIMS_FREE)
-            xx = X_DIMS_FREE(xxi);
-            grid_indices{xxi} = linspace(limits(xx,1), limits(xx,2), num_points(xx));
+            uu = U_DIMS_FREE(uui);
+            u{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) * rand(num_points(X_DIMS_FREE));
         end
         [x{X_DIMS_FREE}] = ndgrid(grid_indices{:});
         G_ = zeros(num_points(X_DIMS_FREE));
@@ -108,9 +109,9 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
     F = griddedInterpolant(x{X_DIMS_FREE}, G_);
     constant_policy_count = 0;
     iter = info.iter;
+    time_total = info.time_total;
     time_policy_eval = info.time_policy_eval;
     time_policy_update = info.time_policy_update;
-    time_total = info.time_eval;
     
 %% Policy Iteration
     time_start = tic;

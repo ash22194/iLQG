@@ -7,7 +7,7 @@ clc;
 restoredefaultpath;
 n = 2;
 system_name = sprintf('manipulator%ddof', n);
-save_dir = 'data';
+save_dir = '/pylon5/cis200015p/akhadke/iLQG/iLQG_boxQP/data';
 addpath('general');
 addpath(strcat('new_systems/', system_name));
 load(strcat('new_systems/', system_name, '/sys.mat'), 'sys');

@@ -130,6 +130,9 @@ function [policies, value, info] = dp_decomposition(sys, Op, p, s)
             else
                 [policy, info] = get_dp_solution(sys_, Op, sub_policies);
                 save(strcat(save_dir, '/', subsystem_id, '.mat'), 'policy', 'info', 'sys_');
+                if (isfile(strcat(save_dir, '/', subsystem_id, '_interm.mat')))
+                    delete(strcat(save_dir, '/', subsystem_id, '_interm.mat'));
+                end
             end
             sub_policies = cat(1, sub_policies, ...
                                {U_DIMS_FREE, X_DIMS_FREE, policy, info});
