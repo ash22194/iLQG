@@ -23,8 +23,10 @@ if (n==2)
 %     sys.Q = diag([8, 8, 0.5, 0.5])/5;
     sys.Q = diag([8, 8, 0.6, 0.6])/5;
     sys.R = diag(0.003*(Izz(1)./Izz).^2);
+%     sys.R = diag([0.003, 0.003]);
 %     sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
-    sys.lims = 15*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
+%     sys.lims = 15*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
+    sys.lims = 15*[-1, 1; -1/3, 1/3]; % action limits
 
     % Define decompositions to test
     u_x = [];
@@ -102,7 +104,7 @@ elseif (n==4)
 
 end
 sys.g = 9.81; % m/s^2
-sys.T = 5;
+sys.T = 4;
 sys.dt = 0.001;
 
 sys.l_point = zeros(sys.X_DIMS, 1);
@@ -144,7 +146,7 @@ for count = 1:1:size(starts,2)
 end
 
 % starts = starts(:, [1, round(size(starts, 2)/2), round(3*size(starts, 2)/4), end]);
-% u_x = u_x([4,1,7,6,3,2,5,8],:);
+% u_x = u_x([5],:);
 
 poolobj = gcp('nocreate');
 delete(poolobj);
@@ -161,7 +163,7 @@ for d=1:1:size(u_x, 1)
     sys.decomposition_id = d;
     p = reshape(u_x(d, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
     s = reshape(u_x(d, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
-    [Xd(:,:,:,d), Ud(:,:,:,d), cd(:,:,d)] = ilqg_decomposition(sys, Op, p, s, starts);
+    [Xd(:,:,:,d), Ud(:,:,:,d), cd(:,:,d)] = ilqg_decomposition_multitraj(sys, Op, p, s, starts);
     
 end
 
@@ -174,4 +176,4 @@ sys.decomposition_id = 0;
 
 err_ddp = mean(abs(reshape(cd, size(starts, 2), size(u_x, 1)) - cjoint'), 1);
 
-save(strcat(save_dir, '/', system_name, '/summary.mat'), 'sys', 'u_x', 'Xd', 'Ud', 'cd', 'Xjoint', 'Ujoint', 'cjoint', 'err_ddp');
+% save(strcat(save_dir, '/', system_name, '/summary.mat'), 'sys', 'u_x', 'Xd', 'Ud', 'cd', 'Xjoint', 'Ujoint', 'cjoint', 'err_ddp');

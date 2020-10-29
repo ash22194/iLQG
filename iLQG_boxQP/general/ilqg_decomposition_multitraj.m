@@ -144,7 +144,7 @@ function [X, U, c] = ilqg_decomposition_multitraj(sys, Op, p, s, starts)
             sys_.U_DIMS_FIXED = linspace(1, sys_.U_DIMS, sys_.U_DIMS)';
             sys_.U_DIMS_FIXED([U_DIMS_CONTROLLED; U_DIMS_FREE]) = [];
             Op.lims = sys_.lims(sys_.U_DIMS_FREE, :);
-            starts_unique = unique(starts(X_DIMS_FREE, :)', 'rows')';
+            starts_unique = unique(starts(X_DIMS_FREE, :)', 'stable', 'rows')';
             
             subsystem_id = strcat('U', sprintf('%d', U_DIMS_FREE), '_X', sprintf('%d', X_DIMS_FREE));
             if (isfield(Op, 'reuse_policy') && (Op.reuse_policy) && isfile(strcat(save_dir, '/', subsystem_id, '.mat')))

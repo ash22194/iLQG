@@ -132,7 +132,7 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
             end
             
             % Compute DDP trajectories
-            starts_unique = unique(starts(X_DIMS_FREE, :)', 'rows')';
+            starts_unique = unique(starts(X_DIMS_FREE, :)', 'stable', 'rows')';
             sub_policies_DDP = leaf_nodes{ii, 4};
             sub_policies_DDP_ = sub_policies_DDP;
             sub_policies_LQR_ = sub_policies_LQR;
