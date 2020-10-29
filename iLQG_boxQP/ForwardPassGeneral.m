@@ -4,7 +4,8 @@ function [X, U, c] = ForwardPassGeneral(sys, sub_policies, x_start)
     NUM_CTRL = round(sys.T / sys.dt);
     X_DIMS = sys.X_DIMS;
     U_DIMS = sys.U_DIMS;
-
+    lims = sys.lims;
+    
     X = zeros(X_DIMS, NUM_CTRL + 1, NUM_STARTS);
     U = zeros(U_DIMS, NUM_CTRL, NUM_STARTS);
     c = zeros(1, NUM_STARTS);
@@ -23,10 +24,14 @@ function [X, U, c] = ForwardPassGeneral(sys, sub_policies, x_start)
                 sub_policies_tt{jj, 3} = sub_policies{jj, 3}(:, closest_x(jj), kk);
                 sub_policies_tt{jj, 4} = sub_policies{jj, 4}(:,:, closest_x(jj), kk);
                 sub_policies_tt{jj, 5} = sub_policies{jj, 5}(:, closest_x(jj), kk);
+                
+                U(sub_policies_tt{jj, 1}, tt, kk) = sub_policies_tt{jj, 3} ...
+                                                    + sub_policies_tt{jj, 4}*(X(sub_policies_tt{jj, 2}, tt, kk) - sub_policies_tt{jj, 5});
             end
-            
+            U(:,tt,kk) = max(lims(:,1), min(lims(:,2), U(:, tt, kk)));
             X(:,tt+1, kk) = dyn_subs_finite2(sys, X(:, tt, kk), zeros(0,1), sub_policies_tt, sys.dt); 
-            c(kk) = c(kk) + discount * cost(sys, X(:, tt, kk), U(:, tt, kk)) * sys.dt;
+            c(kk) = c(kk) + discount * cost_subs(sys, X(:, tt, kk), zeros(0,1), sub_policies_tt) * sys.dt;
+            
             discount = discount * sys.gamma_;
         end
     end
