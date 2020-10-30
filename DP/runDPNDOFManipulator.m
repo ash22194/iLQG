@@ -16,15 +16,16 @@ assert(isfield(sys, 'name') && strcmp(sys.name, system_name), 'Check loaded syst
 sys.X_DIMS = 2*sys.n; % [thi, ... dthi, ...]
 sys.U_DIMS = sys.n;   % [taui]
 if (n==2)
-    sys.m = [2.5; 0.5]/5; % kg
-    sys.l = [0.5; 0.25]/2; % m
+    sys.m = [2.5; 0.5]/2; % kg
+    sys.l = [0.5; 0.25]; % m
     Izz = sys.m.*((sys.l));
-    sys.Q = diag([8, 8, 0.5, 0.5])/5;
+    sys.Q = diag([8, 8, 0.6, 0.6])/5;
     sys.R = diag(0.003*(Izz(1)./Izz).^2);
-    sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
+    % sys.lims = 15*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
+    sys.lims = 15*[-1, 1; -1/3, 1/3];
     
     Op.num_points = 31 * ones(1, sys.X_DIMS);
-    Op.num_action_samples = 15 * ones(1, sys.U_DIMS);
+    Op.num_action_samples = [15, 5];
     
     % Define decompositions to test
     u_x = [];
@@ -130,3 +131,19 @@ s_joint = ones(sys.U_DIMS, sys.X_DIMS);
 disp('Joint');
 sys.decomposition_id = 0;
 [policies_joint, value_joint, info_joint] = dp_decomposition(sys, Op, p_joint, s_joint);
+
+state_bounds = [repmat([-pi/3, pi/3], [n,1]);
+		repmat([-0.5, 0.5], [n,1])];
+state_bounds(1,:) = state_bounds(1,:) + pi;
+state_bounds = mat2cell(state_bounds, ones(2*n,1), 2);
+
+valid_range = cellfun(@(x,y) (x>y(1)) & (x<y(2)), info_joint.state_grid, state_bounds, 'UniformOutput', false);
+valid_range = permute(reshape(permute(cell2mat(valid_range), [linspace(2, 2*n, 2*n-1), 1]), [Op.num_points, 2*n]), [2*n, linspace(1,2*n-1,2*n-1), 2*n+1]);
+valid_range = logical(prod(valid_range, 2*n+1));
+
+err_dp = zeros(1, size(u_x,1));
+for dd=1:1:size(u_x,1)
+    err_dp(dd) = mean(abs(value{dd,1}(valid_range) - value_joint(valid_range)), 'all');
+end
+
+save(strcat(Op.save_dir, '/', system_name, '/summary.mat'), 'u_x', 'policies', 'value', 'info', 'policies_joint', 'value_joint', 'info_joint', 'err_dp', 'sys', 'Op');

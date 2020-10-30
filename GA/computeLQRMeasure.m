@@ -69,8 +69,6 @@ else
                 err_lqr = inf;
                 return;
             else
-                %  V = computeValueGrid(S, sys.l_point, sys.grid{:});
-                %  err_lqr = mean(abs(V(sys.valid_range) - sys.V_joint(sys.valid_range)), 'all');
                 
                 if (isfield(sys, 'err_lqr_func'))
                     err_lqr = sys.err_lqr_func(S, sys.state_bounds(:,1)-sys.l_point, sys.state_bounds(:,2)-sys.l_point)/sys.da;
@@ -90,14 +88,14 @@ else
         for ii=1:1:size(leaf_nodes,1)
             u0_ = leaf_nodes{ii, 3};
             K = leaf_nodes{ii, 4};
-            if (isfield(sys, 'fxu_func'))
-                fxu = sys.fxu_func(sys.l_point, u0_);
+            if (isfield(sys, 'fxfu_func'))
+                fxfu = sys.fxfu_func(sys.l_point, u0_);
             else
-                fxu = eval(subs(sys.fxu, [sys.xu], [sys.l_point; u0_]));
+                fxfu = eval(subs(sys.fxfu, [sys.xu], [sys.l_point; u0_]));
             end
             
-            A_ = fxu(:,1:sys.X_DIMS);
-            B_ = fxu(:,(sys.X_DIMS+1):end);
+            A_ = fxfu(:,1:sys.X_DIMS);
+            B_ = fxfu(:,(sys.X_DIMS+1):end);
             Q_ = sys.Q;
             R_ = sys.R;
 

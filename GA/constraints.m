@@ -67,6 +67,6 @@ for ii=1:1:size(coupled_inputs, 1)
 end
 
 % Constraint to avoid jointly optimizing the inputs
-c = [c; sum(s, 2) - (n-1)];
+c = [c; sum(s, 'all') - (m*n-1)];
 
 end
