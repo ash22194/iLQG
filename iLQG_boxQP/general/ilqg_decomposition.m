@@ -47,7 +47,7 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
         end
         
         sub_policies_LQR = cell(0, 5);
-        sub_policies_DDP = cell(0, 5);
+        sub_policies_DDP = cell(0, 6);
         action_tree(end+1, :) = {curr_node, curr_state, ...
                                  sub_policies_LQR, sub_policies_DDP, ...
                                  curr_parent, curr_children};
@@ -74,15 +74,16 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
             sys_.U_DIMS_FIXED = [];
             sub_policies_DDP = leaf_nodes{1, 4};
             for jj=1:1:size(sub_policies_DDP,1)
-                start_dist = pdist2(starts(sub_policies_DDP{jj,2},:)', reshape(sub_policies_DDP{jj,5}(:,1,:), size(sub_policies_DDP{jj,5}, 1), size(sub_policies_DDP{jj,5}, 3))');
+                start_dist = pdist2(starts(sub_policies_DDP{jj,2},:)', reshape(sub_policies_DDP{jj,6}(:,1,:), size(sub_policies_DDP{jj,6}, 1), size(sub_policies_DDP{jj,6}, 3))');
                 [~, closest_start] = min(start_dist, [], 2);
                 
                 sub_policies_DDP{jj,3} = sub_policies_DDP{jj,3}(:,:,closest_start);
                 sub_policies_DDP{jj,4} = sub_policies_DDP{jj,4}(:,:,:,closest_start);
                 sub_policies_DDP{jj,5} = sub_policies_DDP{jj,5}(:,:,closest_start);
+                sub_policies_DDP{jj,6} = sub_policies_DDP{jj,6}(:,:,closest_start);
             end
             [X, U, c] = ForwardPassGeneral(sys_, sub_policies_DDP, starts);
-            save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'initial_trajectories', 'p', 's', 'X', 'U', 'c');
+%             save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'initial_trajectories', 'p', 's', 'X', 'U', 'c');
             return;
         end
         
@@ -142,11 +143,12 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
                 [~, sub_policies_DDP_{jj, 1}] = find(sub_policies_DDP_{jj, 1} == U_DIMS_CONTROLLED');
                 [~, sub_policies_DDP_{jj, 2}] = find(sub_policies_DDP_{jj, 2} == X_DIMS_FREE');
                 
-                start_dist = pdist2(starts_unique(sub_policies_DDP_{jj, 2}, :)', reshape(sub_policies_DDP{jj, 5}(:,1,:), size(sub_policies_DDP{jj, 5}, 1), size(sub_policies_DDP{jj, 5}, 3))');
+                start_dist = pdist2(starts_unique(sub_policies_DDP_{jj, 2}, :)', reshape(sub_policies_DDP{jj, 6}(:,1,:), size(sub_policies_DDP{jj, 6}, 1), size(sub_policies_DDP{jj, 6}, 3))');
                 [~, closest_start] = min(start_dist, [], 2);
                 sub_policies_DDP_{jj, 3} = sub_policies_DDP{jj, 3}(:,:,closest_start);
                 sub_policies_DDP_{jj, 4} = sub_policies_DDP{jj, 4}(:,:,:,closest_start);
                 sub_policies_DDP_{jj, 5} = sub_policies_DDP{jj, 5}(:,:,closest_start);
+                sub_policies_DDP_{jj, 6} = sub_policies_DDP{jj, 6}(:,:,closest_start);
             end
             sub_policies_LQR = cat(1, sub_policies_LQR, ...
                                    {U_DIMS_FREE, X_DIMS_FREE, sys.u0(U_DIMS_FREE), -K_, sys.l_point(X_DIMS_FREE)});
@@ -169,18 +171,19 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
                 Cinit = decomposition.Cinit;
                 
                 X_DDP = decomposition.X_DDP;
+                X_Final = decomposition.X_Final;
                 k_DDP = decomposition.k_DDP;
                 K_DDP = decomposition.K_DDP;
             else
-                [X_DDP, k_DDP, K_DDP, ...
-                 ~, ~, ~, ~, Xinit, Uinit, Cinit] = get_ilqg_trajectory_parallel(sys_, Op, starts_unique, ...
+                [X_Final, U_Final, X_DDP, k_DDP, K_DDP, ...
+                 ~, ~, ~, ~, Xinit, Uinit, Cinit] = get_ilqg_trajectory(sys_, Op, starts_unique, ...
                                                             -K_, sub_policies_LQR_, sub_policies_DDP_);
                 
-                save(strcat(save_dir, '/', subsystem_id, '.mat'), 'X_DDP', 'k_DDP', 'K_DDP', 'Xinit', 'Uinit', 'Cinit', 'sys_');
+%                 save(strcat(save_dir, '/', subsystem_id, '.mat'), 'X_Final', 'U_Final', 'X_DDP', 'k_DDP', 'K_DDP', 'Xinit', 'Uinit', 'Cinit', 'sys_');
             end
             
             sub_policies_DDP = cat(1, sub_policies_DDP, ...
-                                   {U_DIMS_FREE, X_DIMS_FREE, k_DDP, K_DDP, X_DDP});
+                                   {U_DIMS_FREE, X_DIMS_FREE, k_DDP, K_DDP, X_DDP, X_Final});
             initial_trajectories = cat(1, initial_trajectories, ...
                                    {U_DIMS_FREE, X_DIMS_FREE, Xinit, Uinit, Cinit});
 
