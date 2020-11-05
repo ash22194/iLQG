@@ -27,7 +27,7 @@ for jj = 1:1:size(sub_trajectories,1)
 end
 sub_trajectories_close_i = cell(size(sub_trajectories, 1), size(sub_trajectories, 2)-1);
 sub_trajectories_close_i(:, 1:2) = sub_trajectories(:, 1:2);
-    
+
 discount = 1;
 for i = 1:N
     unew(:,:,i) = u(:,i*K1);
