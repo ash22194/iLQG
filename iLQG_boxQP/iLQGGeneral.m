@@ -170,12 +170,13 @@ elseif size(x0,2) == N+1 % pre-rolled initial forward pass
         sub_trajectories_close = cell(size(sub_trajectories));
         sub_trajectories_close(:, 1:2) = sub_trajectories(:, 1:2);
         for jj=1:1:size(sub_trajectories, 1)
-            distref = pdist2(sub_trajectories{jj, 5}', x0(sub_trajectories{jj, 2}, :)');
+            distref = pdist2(sub_trajectories{jj, 6}', x0(sub_trajectories{jj, 2}, :)');
             [~, closest_x] = min(distref);
             
             sub_trajectories_close{jj, 3} = sub_trajectories{jj, 3}(:, closest_x);
             sub_trajectories_close{jj, 4} = sub_trajectories{jj, 4}(:,:, closest_x);
             sub_trajectories_close{jj, 5} = sub_trajectories{jj, 5}(:, closest_x);
+            sub_trajectories_close{jj, 6} = sub_trajectories{jj, 6}(:, closest_x);
         end
     end
 else
@@ -296,6 +297,7 @@ for iter = 1:Op.maxIter
                     sub_trajectories_closenew{jj,3} = sub_trajectories_closenew{jj,3}(:,:,w);
                     sub_trajectories_closenew{jj,4} = sub_trajectories_closenew{jj,4}(:,:,:,w);
                     sub_trajectories_closenew{jj,5} = sub_trajectories_closenew{jj,5}(:,:,w);
+                    sub_trajectories_closenew{jj,6} = sub_trajectories_closenew{jj,6}(:,:,w);
                 end
             end
         else            % serial backtracking line-search

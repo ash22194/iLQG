@@ -23,6 +23,7 @@ for jj = 1:1:size(sub_trajectories,1)
     sub_trajectories_close{jj, 4} = zeros(length(sub_trajectories{jj, 1}), ...
                                           length(sub_trajectories{jj, 2}),K,N+1);
     sub_trajectories_close{jj, 5} = zeros(length(sub_trajectories{jj, 2}),K,N+1);
+    sub_trajectories_close{jj, 6} = zeros(length(sub_trajectories{jj, 2}),K,N+1);
 end
 sub_trajectories_close_i = cell(size(sub_trajectories));
 sub_trajectories_close_i(:, 1:2) = sub_trajectories(:, 1:2);
