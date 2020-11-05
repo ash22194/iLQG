@@ -107,6 +107,9 @@ m   = size(u0, 1);          % dimension of control vector
 N   = size(u0, 2);          % number of state transitions
 u   = u0;                   % initial control sequence
 
+[Vx,Vxx, stop]  = deal(nan);
+L        = zeros(m,n,N);
+cost     = [];
 Mdl = cellfun(@(x) KDTreeSearcher(x'), sub_trajectories(:, end), 'UniformOutput', false);
 
 % --- proccess options
@@ -159,6 +162,7 @@ if size(x0,2) == 1
     end
 elseif size(x0,2) == N+1 % pre-rolled initial forward pass
     x        = x0;
+    ulast    = u0;
     xlast    = x0;
     diverge  = false;
     if isempty(Op.cost)
@@ -172,6 +176,7 @@ elseif size(x0,2) == N+1 % pre-rolled initial forward pass
             sub_trajectories_close{jj, 3} = sub_trajectories{jj, 3}(:, closest_x);
             sub_trajectories_close{jj, 4} = sub_trajectories{jj, 4}(:,:, closest_x);
             sub_trajectories_close{jj, 5} = sub_trajectories{jj, 5}(:, closest_x);
+            sub_trajectories_close{jj, 6} = sub_trajectories{jj, 6}(:, closest_x);
         end
     end
 else
@@ -184,12 +189,9 @@ trace(1).cost = sum(cost(:));
 Op.plotFn(x);
 
 if diverge
-    [Vx,Vxx, stop]  = deal(nan);
-    L        = zeros(m,n,N);
-    cost     = [];
     trace    = trace(1);
-    x_last   = x;
-    u_last   = u;
+    xlast   = x;
+    ulast   = u;
     sub_trajectories_close = cell(0, size(sub_trajectories, 2));
     if verbosity > 0
         fprintf('\nEXIT: Initial control sequence caused divergence\n');
@@ -231,7 +233,7 @@ for iter = 1:Op.maxIter
     while ~backPassDone
         
         t_back   = tic;
-        [diverge, Vx, Vxx, l, L, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,Op.gamma_,Op.regType,Op.lims,u);
+        [diverge, Vxnew, Vxxnew, l, Lnew, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,Op.gamma_,Op.regType,Op.lims,u);
         trace(iter).time_backward = toc(t_back);
         
         if diverge
@@ -266,7 +268,7 @@ for iter = 1:Op.maxIter
         t_fwd = tic;
         if Op.parallel  % parallel line-search
             [xnew,unew,ulastnew,costnew,...
-             sub_trajectories_closenew] = forward_pass_general_kdtree(x0, u, L, x(:,1:N), l, ...
+             sub_trajectories_closenew] = forward_pass_general_kdtree(x0, u, Lnew, x(:,1:N), l, ...
                                                                       sub_trajectories, Mdl, ...
                                                                       Op.Alpha, Op.gamma_, ...
                                                                       DYNCST, Op.lims, Op.diffFn);
@@ -291,12 +293,13 @@ for iter = 1:Op.maxIter
                     sub_trajectories_closenew{jj,3} = sub_trajectories_closenew{jj,3}(:,:,w);
                     sub_trajectories_closenew{jj,4} = sub_trajectories_closenew{jj,4}(:,:,:,w);
                     sub_trajectories_closenew{jj,5} = sub_trajectories_closenew{jj,5}(:,:,w);
+                    sub_trajectories_closenew{jj,6} = sub_trajectories_closenew{jj,6}(:,:,w);
                 end
             end
         else            % serial backtracking line-search
             for alpha = Op.Alpha
                 [xnew,unew,ulastnew,costnew, ...
-                 sub_trajectories_closenew]   = forward_pass_general_kdtree(x0, u+l*alpha, L, x(:,1:N), [], ...
+                 sub_trajectories_closenew]   = forward_pass_general_kdtree(x0, u+l*alpha, Lnew, x(:,1:N), [], ...
                                                                             sub_trajectories, Mdl, 1, Op.gamma_, ...
                                                                             DYNCST, Op.lims, Op.diffFn);
                 dcost    = sum(cost(:)) - sum(costnew(:));
@@ -349,6 +352,9 @@ for iter = 1:Op.maxIter
         xlast                  = xlastnew;
         cost                   = costnew;
         sub_trajectories_close = sub_trajectories_closenew;
+        Vxx                    = Vxxnew;
+        Vx                     = Vxnew;
+        L                      = Lnew;
         flgChange              = 1;
         stop = Op.plotFn(x);
         
