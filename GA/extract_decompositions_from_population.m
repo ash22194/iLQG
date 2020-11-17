@@ -49,7 +49,7 @@ function [unique_population, unique_population_id] = extract_decompositions_from
             node_list = cell2mat(action_tree(:,1));
             prufer_seq = [];
             while (size(action_tree) > 2)
-                leaf_node_ids = cellfun(@(x) length(x)==0, action_tree(:,end));
+                leaf_node_ids = cellfun(@(x) isempty(x), action_tree(:,end));
                 leaf_nodes = cell2mat(action_tree(leaf_node_ids, 1));
                 leaf_node_parents = cell2mat(action_tree(leaf_node_ids, 2));
                 leaf_node_ids = find(leaf_node_ids);
