@@ -77,12 +77,12 @@ classdef policy_decomposition < handle
                     curr_state = action_tree{jj, 2};
                     curr_parent = action_tree{jj, 3};
                     
-                    parent_node = cellfun(@(x) setequal(x, curr_parent), action_tree(:,1));
+                    parent_node = cellfun(@(x) fastsetequal(x, curr_parent), action_tree(:,1));
                     assert(sum(parent_node)==1, 'Incorrect parent node for child!');
                     
                     parent_node = action_tree(parent_node, :);
                     children_list = parent_node{1, end};
-                    child_id = find(cellfun(@(x) setequal(x, curr_node), children_list), 1);
+                    child_id = find(cellfun(@(x) fastsetequal(x, curr_node), children_list), 1);
                     assert(~isempty(child_id), 'Child not found!');
                     
                     p(curr_node, 1) = curr_parent(1);
@@ -147,8 +147,8 @@ classdef policy_decomposition < handle
             de.p = p;
             de.s = s;
             de.action_tree = action_tree;
-            de.decomposition_key = strcat(num2str(reshape(p, 1, 2*U_DIMS), '%d'), ...
-                                          num2str(reshape(s, 1, X_DIMS*U_DIMS), '%d'));
+            de.decomposition_key = strcat(fastint2str(reshape(p, 1, 2*U_DIMS)), ...
+                                          fastint2str(reshape(s, 1, X_DIMS*U_DIMS)));
             de.parent = parent;
             if (isa(parent, 'policy_decomposition'))
                 de.lqr_measure_table = parent.lqr_measure_table;
