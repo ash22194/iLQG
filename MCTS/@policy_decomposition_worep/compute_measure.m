@@ -1,7 +1,7 @@
 function measure = compute_measure(de)
     
-    if (de.nodelist.isKey(de.decomposition_key) && isa(de.nodelist(de.decomposition_key), 'policy_decomposition'))
-        measure = de.nodelist(de.decomposition_key).measure;
+    if (de.nodelist.isKey(de.decomposition_key))
+        measure = de.measure;
         return;
     end
     
@@ -57,11 +57,13 @@ function measure = compute_measure(de)
 
                 err_compute = err_compute / joint_compute;
             end
-            de.lqr_measure = err_lqr;
-            de.compute_fraction = err_compute;
-            de.measure = sys_.measure_func(err_lqr, err_compute);
-            measure = de.measure;
+            measure = sys_.measure_func(err_lqr, err_compute);
             
+            de.lqr_measure = err_lqr;
+            
+            de.compute_fraction = err_compute;
+            
+            de.measure = measure;
             return;
         end
         
@@ -87,11 +89,14 @@ function measure = compute_measure(de)
                 [K_, ~, ~] = lqr(A_ - eye(size(A_, 1))*sys_.lambda_/2, B_, ...
                                  Q_, R_, zeros(size(A_, 1), size(B_, 2)));
             catch ME
-                de.lqr_measure = inf;
-                de.compute_fraction = 1;
-                de.measure = sys_.measure_func(de.lqr_measure, de.compute_fraction);
-                measure = de.measure;
+                err_lqr = inf;
+                de.lqr_measure = err_lqr;
                 
+                err_compute = 1;
+                de.compute_fraction = err_compute;
+                
+                measure = sys_.measure_func(err_lqr, err_compute);
+                de.measure = measure;
                 return;
             end
             K(leaf_nodes{ii, 1}, logical(leaf_nodes{ii, 2})) = K_;

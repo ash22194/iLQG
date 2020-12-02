@@ -1,11 +1,11 @@
-classdef policy_decomposition < handle
+classdef policy_decomposition_worep < handle
     properties
         sys
         p
         s
         action_tree
         decomposition_key
-        parent
+        parents
         lqr_measure
         compute_fraction
         measure
@@ -19,7 +19,7 @@ classdef policy_decomposition < handle
     
     methods 
         
-        function de = policy_decomposition(varargin)
+        function de = policy_decomposition_worep(varargin)
             % Constructor
             sys = varargin{1};
             if (~isfield(sys, 'fxfu_func'))
@@ -56,7 +56,7 @@ classdef policy_decomposition < handle
             
             if (nargin==3)
                 action_tree = varargin{2};
-                parent      = varargin{3};
+                parents     = varargin{3};
                 
                 % Construct p and s
                 X_DIMS = sum(cellfun(@(x) sum(x), action_tree(:,2)));
@@ -93,9 +93,9 @@ classdef policy_decomposition < handle
                 assert(all(p(:,1)~=linspace(1, U_DIMS, U_DIMS)'), 'No input can be its own parent');
                 
             elseif (nargin==4)
-                p      = varargin{2};
-                s      = varargin{3};
-                parent = varargin{4};
+                p       = varargin{2};
+                s       = varargin{3};
+                parents = varargin{4};
                 assert(size(p,1) == size(s,1), 'Not a valid decomposition');
                 
                 % Build action tree
@@ -146,20 +146,19 @@ classdef policy_decomposition < handle
             de.s = s;
             de.action_tree = action_tree;
             de.decomposition_key = fastint2str(encode_tree_ps(de.action_tree));
-            de.parent = parent;
-            if (isa(parent, 'policy_decomposition'))
-                de.nodelist = parent.nodelist;
+            de.parents = parents;
+            if (~isempty(parents))
+                de.nodelist = parents{1}.nodelist;
             else
                 de.nodelist = containers.Map();
             end
-            assert(~de.nodelist.isKey(de.decomposition_key) ...
-                   || ~isa(de.nodelist(de.decomposition_key), 'policy_decomposition'), ...
-                   'Node already exists!!');
-            de.compute_measure();
+            assert(~de.nodelist.isKey(de.decomposition_key), 'Node already exists in the tree!');
+            
             de.childnodes = [];
             de.childnode_best = 0;
             de.visit_count = 0;
             de.subtree_unexplored = true;
+            de.compute_measure();
             
             % Calculate maximum children you can get from a node
             % Children can be created by splitting pseudo-inputs
@@ -193,12 +192,12 @@ classdef policy_decomposition < handle
             end
             de.childnode_maxcount = childnode_maxcount;
             
-            % Add node to nodelist
+            % Add to nodelist
             de.nodelist(de.decomposition_key) = de;
         end
         
-        function par = get_parent(de)
-            par = de.parent;
+        function par = get_parents(de)
+            par = de.parents;
         end
         
         function child = expand_best_child(de, determ)
@@ -213,27 +212,38 @@ classdef policy_decomposition < handle
                 end
             end
             
-            % Find all children that haven't been expanded
-            childnodes_ = cellfun(@(x) de.nodelist(x), de.childnodes, 'UniformOutput', false);
-            childnodes_unexpanded = cellfun(@(x) ~isa(x, 'policy_decomposition'), childnodes_);
+            % Find children that haven't been expanded
+            childnodes_unexpanded = cellfun(@(x) ~isa(x, 'policy_decomposition_worep'), de.childnodes);
             if (any(childnodes_unexpanded))
-                childnodes_unexplored_fully = childnodes_(childnodes_unexpanded);
+                childnodes_unexplored_fully = de.childnodes(childnodes_unexpanded);
+                
                 max_uctchild = 1;
                 if (~determ)
                     max_uctchild = randperm(length(childnodes_unexplored_fully), 1);
                 end
+
                 action_tree_ = childnodes_unexplored_fully{max_uctchild};
-                child = policy_decomposition(de.sys, ...
-                                             action_tree_, ...
-                                             de);
+                action_tree_encoding = fastint2str(encode_tree_ps(action_tree_));
+                if (de.nodelist.isKey(action_tree_encoding))
+                    child = de.nodelist(action_tree_encoding);
+                    child.parents = cat(1, child.parents, {de});
+                else
+                    child = policy_decomposition_worep(de.sys, ...
+                                                     action_tree_, ...
+                                                     {de});
+                end
+                
+                max_uctchild = find(childnodes_unexpanded, max_uctchild);
+                max_uctchild = max_uctchild(end);
+                de.childnodes{max_uctchild} = child;
             else
                 % Expanded but not fully explored?
-                childnodes_unexplored_fully = cellfun(@(x) x.subtree_unexplored, childnodes_);
-                childnodes_unexplored_fully = childnodes_(childnodes_unexplored_fully);
+                childnodes_unexplored_fully = cellfun(@(x) x.subtree_unexplored, de.childnodes);
+                childnodes_unexplored_fully = de.childnodes(childnodes_unexplored_fully);
                 
                 if (isempty(childnodes_unexplored_fully))
                     de.subtree_unexplored = false;
-                    child = de.parent;
+                    child = de.parents{randperm(length(de.parents), 1)};
                     return;
                 end
                 
@@ -252,57 +262,31 @@ classdef policy_decomposition < handle
                     max_uctchild = best_children(randperm(length(best_children), 1));
                 end
                 child = childnodes_unexplored_fully{max_uctchild};
-                child.parent = de; % Which parent do you keep? - The latest (best? worst?)
                 assert(de.nodelist.isKey(child.decomposition_key), 'Child node missing from nodelist!');
             end
             
             de.visit_count = de.visit_count + 1;
             min_measure = child.measure;
             
-            child_ = child;
-            while (true)
-                if (min_measure < de.measure)
-                    de.measure = min_measure;
-                    de.childnode_best = child_;
-                    child_ = de;
-                    de = de.parent;
-                else
-                    if ((de.childnode_best==0) || (min_measure < de.childnode_best.measure))
-                        de.childnode_best = child_;
-                    end
-                    break;
-                end
+            % Backpropagation
+            queue = {child};
+            while (~isempty(queue))
+               
+               curr_node = queue{1};
+               parents_update = curr_node.parents(cellfun(@(x) x.measure > min_measure, curr_node.parents));
+               for qq=1:1:size(parents_update, 1)
+                   parents_update{qq}.measure = min_measure;
+                   parents_update{qq}.childnode_best = curr_node;
+               end
+               queue = cat(1, queue(2:end, 1), parents_update);
+               
+               parents_childupdate = curr_node.parents(cellfun(@(x) x.childnode_best==0 || ...
+                                                                    x.childnode_best.measure > min_measure, ...
+                                                               curr_node.parents));
+               for qq=1:1:size(parents_childupdate, 1)
+                   parents_childupdate{qq}.childnode_best = curr_node;
+               end
             end
-        end
-        
-        function visualize_subtree(de)
-            
-            % Current node is the root
-            nodes = [0];
-            lqr_measures = [de.lqr_measure];
-            compute_fractions = [de.compute_fraction];
-            queue = {de};
-            parent_count = 1;
-            
-            while(~isempty(queue))
-                de_ = queue{1};
-                queue = queue(2:end,:);
-                if (isempty(de_.childnodes))
-                    continue;
-                end
-                nodes = cat(1, nodes, parent_count*ones(size(de_.childnodes, 1), 1));
-                lqr_measures = cat(1, lqr_measures, cellfun(@(x) x.lqr_measure, de_.childnodes));
-                compute_fractions = cat(1, compute_fractions, cellfun(@(x) x.compute_fraction, de_.childnodes));
-                
-                queue = cat(1, queue, de_.childnodes);
-                parent_count = parent_count + 1;
-            end
-            
-            [x, y] = treelayout(nodes');
-            treeplot(nodes'); hold on;
-            text(x, y+0.01, num2str(lqr_measures, '%.3f'), 'FontSize', 5);
-            text(x, y-0.01, num2str(compute_fractions, '%.3f'), 'FontSize', 5);
-            hold off;
         end
         
         function [num, num_unique] = count_subtree_nodes(de)
