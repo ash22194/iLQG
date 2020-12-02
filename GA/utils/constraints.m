@@ -16,8 +16,9 @@ c = [];
 c_eq = [];
 
 % No input must be it's own parent
-% c_eq = [c_eq; (p(:,1) ~= linspace(1, m, m)') - 1];
-c = [c; (p(:,1) ~= linspace(1, m, m)') - 1; 1 - (p(:,1) ~= linspace(1, m, m)')];
+input_ids = (1:1:m)';
+parent_check = (p(:,1) ~= input_ids) - 1;
+c = [c; parent_check; -parent_check];
 
 % At least one input must have a zero parent
 c = [c; 1 - sum(p(:,1)==0)];
@@ -41,7 +42,7 @@ end
 % Each state variable must be assigned to at least one input
 c = [c; 1 - sum(s, 1)'];
 
-coupled_inputs = nchoosek(linspace(1, m, m), 2);
+coupled_inputs = nchoosek(input_ids, 2);
 for ii=1:1:size(coupled_inputs, 1)
     % Coupled inputs must have the same state assignment
     input1 = coupled_inputs(ii,1);

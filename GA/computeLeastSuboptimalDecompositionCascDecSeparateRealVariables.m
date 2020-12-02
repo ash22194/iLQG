@@ -4,6 +4,7 @@ clc;
 
 %% 
 
+addpath('utils')
 load('data/Biped2DSystemInputCoupled.mat');
 NUM_PSEUDO_DIMS = size(sys.U_PSEUDO_DIMS, 1);
 

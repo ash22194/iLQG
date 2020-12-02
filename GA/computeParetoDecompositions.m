@@ -3,6 +3,8 @@ close all;
 clc;
 
 %% 
+
+addpath('utils');
 system_name = 'cartpole';
 load(strcat('data/', system_name, 'System.mat'));
 sys.xu = [sys.x; sys.u];

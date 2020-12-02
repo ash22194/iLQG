@@ -5,7 +5,8 @@ clc;
 %% 
 
 restoredefaultpath();
-system_name = 'manipulator4dof';
+system_name = 'manipulator3dof';
+addpath('utils');
 addpath(strcat('../iLQG_boxQP/new_systems/', system_name));
 load(strcat('../MCTS/data/', system_name, 'System.mat'));
 
@@ -33,6 +34,9 @@ if (~isfield(sys, 'err_lqr_func'))
     sys.da = prod(sys.state_bounds(:,2) - sys.state_bounds(:,1), 1);
 end
 
+% Add a map for remembering decompositions
+sys.decompositionlist = containers.Map();
+
 fun = @(x) computeJointMeasure(sys, reshape(x(1:2*sys.U_DIMS), sys.U_DIMS, 2), ...
                                     reshape(x((2*sys.U_DIMS + 1):(2*sys.U_DIMS + sys.U_DIMS*sys.X_DIMS)), sys.U_DIMS, sys.X_DIMS));
 nvars = 2*sys.U_DIMS + sys.X_DIMS*sys.U_DIMS;
@@ -56,8 +60,8 @@ options.CrossoverFcn = @(parents, options, nvars, fitness_fcn, unused, populatio
                          crossoverfunction(sys, parents, options, nvars, fitness_fcn, unused, population);
 options.MutationFcn = @(parents, options, nvars, fitness_fcn, state, score, population) ...
                          mutationfunction(sys, parents, options, nvars, fitness_fcn, state, score, population);
-MaxGATime = 300;
-MaxTotalTime = 300;
+MaxGATime = 100;
+MaxTotalTime = 100;
 ga_solutions = cell(0, 6); % x, err_joint, exitflag, output, population, scores
 tic;
 while((MaxTotalTime - toc) > 0)
@@ -79,10 +83,20 @@ final_scores     = final_scores(unique_population_id, :);
 final_population = final_population(final_scores_order(1:min(num_to_extract, size(final_population, 1))), :);
 final_scores     = final_scores(final_scores_order(1:min(num_to_extract, size(final_scores, 1))), :);
 
+[cumm_population_encoding, cumm_population_ids] = unique(cell2mat(sys.decompositionlist.keys'), ...
+                                                         'rows', 'stable');
+cumm_population_measure = cell2mat(sys.decompositionlist.values');
+cumm_population_measure = cumm_population_measure(cumm_population_ids);
+
+[best_population_measure, best_population_ids] = sort(cumm_population_measure);
+best_population_measure = best_population_measure(1:num_to_extract);
+best_population_ids = best_population_ids(1:num_to_extract);
+best_population = cumm_population_encoding(best_population_ids, :);
 
 %% Random Sampling
 
 sampled_population = cell(0, 2);
+sys.decompositionlist = containers.Map();
 tic;
 while ((MaxTotalTime - toc) > 0)
     
@@ -107,8 +121,8 @@ sampled_population = cell2mat(sampled_population(unique_sampled_population_id, 1
 sampled_population = sampled_population(sampled_population_order(1:min(num_to_extract, size(sampled_population, 1))), :);
 sampled_population_measure = sampled_population_measure(1:size(sampled_population, 1), :);
 
-% save(strcat('data/', system_name,'_GA_RandomSampled_',num2str(MaxTotalTime),'.mat'), ...
-%      'sys', 'final_population', 'final_scores', 'sampled_population', 'sampled_population_measure', 'MaxTotalTime', 'MaxGATime', 'num_to_extract');
+save(strcat('data/', system_name,'_GA_RandomSampled_',num2str(MaxTotalTime),'_run3.mat'), ...
+     'sys', 'final_population', 'final_scores', 'best_population', 'best_population_measure', 'sampled_population', 'sampled_population_measure', 'MaxTotalTime', 'MaxGATime', 'num_to_extract');
 
 %% Functions
 

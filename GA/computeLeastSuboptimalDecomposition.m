@@ -4,6 +4,7 @@ clc;
 
 %% 
 
+addpath('utils');
 system_name = 'manipulator2dof';
 load(strcat('data/', system_name, 'System.mat'));
 sys.xu = [sys.x; sys.u];
