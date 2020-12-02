@@ -21,8 +21,8 @@ if (n==2)
     Izz = sys.m.*((sys.l));
     sys.Q = diag([8, 8, 0.6, 0.6])/5;
     sys.R = diag(0.003*(Izz(1)./Izz).^2);
+    sys.limits = [0, 2*pi; repmat([-pi, pi], n-1, 1); repmat([-3, 3], n, 1)];
     sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
-%     sys.lims = 15*[-1, 1; -1/3, 1/3];
     
     Op.num_points = 31 * ones(1, sys.X_DIMS);
     Op.num_action_samples = [15, 5];
@@ -63,24 +63,20 @@ if (n==2)
     p = [0, 1;0, 2];
     s = [0, 1, 0, 1;1, 0, 1, 0];
     u_x = [u_x; reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
-    
-%     u_x = u_x([2;3;5;6;1;4;7;8], :);
-    
+        
 elseif (n==3)
     sys.m = [2.5; 0.5; 0.1] * 1.1; % kg
     sys.l = [0.5; 0.25; 0.125]; % m
     Izz = sys.m.*((sys.l));
     sys.Q = diag([8*ones(1,3), 0.6*ones(1,3)])/5;
     sys.R = diag(0.004*(Izz(1)./Izz));
+    sys.limits = [0, 2*pi; repmat([-pi, pi], n-1, 1); repmat([-3, 3], n, 1)];
     sys.lims = [-16, 16; -7.5, 7.5; -1, 1]; % action limits
     
     Op.num_points = [17, 17, 17, 13, 13, 13];
     Op.num_action_samples = [8, 3, 2];
     
     % Define decompositions to test
-%     p = [linspace(0,n-1,n)', ones(n,1)];
-%     s = repmat(eye(n), [1, 2]);
-%     u_x = [reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
     load('data/manipulator3dof/manipulator3dof_paretofront.mat');
     u_x = u_xp;
     
@@ -90,15 +86,15 @@ elseif (n==4)
     Izz = sys.m.*((sys.l));
     sys.Q = diag([8*ones(1,4), 0.2*ones(1,4)])/2;
     sys.R = diag([0.002; 0.004*(Izz(2)./Izz(2:end))]);
+    sys.limits = [pi/2, 3*pi/2; repmat([-pi/2, pi/2], n-1, 1); repmat([-1.5, 1.5], n, 1)];
     sys.lims = [-24, 24; -15, 15; -7.5, 7.5; -1, 1]; % action limits
     
-    Op.num_points = 31 * ones(1, sys.X_DIMS);
-    Op.num_action_samples = 15 * ones(1, sys.U_DIMS);
+    Op.num_points = [9, 9, 9, 9, 7, 7, 7, 7];
+    Op.num_action_samples = [12, 7, 3, 2];
     
     % Define decompositions to test
-    p = [linspace(0,n-1,n)', ones(n,1)];
-    s = repmat(eye(n), [1, 2]);
-    u_x = [reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    load('data/manipulator4dof/manipulator4dof_paretofront.mat');
+    u_x = u_xp;
 end
 sys.g = 9.81; % m/s^2
 sys.dt = 0.001;
@@ -107,7 +103,6 @@ sys.l_point(1) = pi;
 sys.goal = sys.l_point;
 sys.u0 = zeros(sys.U_DIMS, 1);
 sys.gamma_ = 0.997;
-sys.limits = [0, 2*pi; repmat([-pi, pi], n-1, 1); repmat([-3, 3], n, 1)];
 
 Op.max_iter = 2000;
 Op.max_policy_iter = 100;

@@ -10,8 +10,8 @@ function [X, U, c] = ForwardPassGeneral_multitraj(sys, sub_policies, x_start)
     U = zeros(U_DIMS, NUM_CTRL, NUM_STARTS);
     c = zeros(1, NUM_STARTS);
     
-    Mdl = cellfun(@(x) KDTreeSearcher(x'), sub_policies(:,5), 'UniformOutput', false);
-    sub_policies_tt = cell(size(sub_policies));
+    Mdl = cellfun(@(x) KDTreeSearcher(x'), sub_policies(:,6), 'UniformOutput', false);
+    sub_policies_tt = cell(size(sub_policies, 1), size(sub_policies, 2) - 1);
     sub_policies_tt(:,1:2) = sub_policies(:,1:2);
         
     for kk = 1:1:NUM_STARTS

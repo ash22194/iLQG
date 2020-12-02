@@ -23,7 +23,10 @@ for jj = 1:1:size(sub_trajectories,1)
     sub_trajectories_close{jj, 4} = zeros(length(sub_trajectories{jj, 1}), ...
                                           length(sub_trajectories{jj, 2}),K,N+1);
     sub_trajectories_close{jj, 5} = zeros(length(sub_trajectories{jj, 2}),K,N+1);
+    sub_trajectories_close{jj, 6} = zeros(length(sub_trajectories{jj, 2}),K,N+1);
 end
+sub_trajectories_close_i = cell(size(sub_trajectories, 1), size(sub_trajectories, 2)-1);
+sub_trajectories_close_i(:, 1:2) = sub_trajectories(:, 1:2);
 
 discount = 1;
 for i = 1:N
@@ -48,10 +51,8 @@ for i = 1:N
         unew(:,:,i) = min(lims(:,2*K1), max(lims(:,1*K1), unew(:,:,i)));
     end
     
-    sub_trajectories_close_i = cell(size(sub_trajectories));
-    sub_trajectories_close_i(:, 1:2) = sub_trajectories(:, 1:2);
     for jj=1:1:size(sub_trajectories, 1)
-        distref = pdist2(sub_trajectories{jj, 5}', xnew(sub_trajectories{jj, 2},:,i)');
+        distref = pdist2(sub_trajectories{jj, 6}', xnew(sub_trajectories{jj, 2},:,i)');
         [~, closest_xn2] = min(distref);
         
         sub_trajectories_close_i{jj, 3} = sub_trajectories{jj, 3}(:, closest_xn2);
@@ -61,6 +62,7 @@ for i = 1:N
         sub_trajectories_close{jj, 3}(:,:, i) = sub_trajectories{jj, 3}(:, closest_xn2);
         sub_trajectories_close{jj, 4}(:,:,:, i) = sub_trajectories{jj, 4}(:,:, closest_xn2);
         sub_trajectories_close{jj, 5}(:,:, i) = sub_trajectories{jj, 5}(:, closest_xn2);
+        sub_trajectories_close{jj, 6}(:,:, i) = sub_trajectories{jj, 6}(:, closest_xn2);
     end
 
     [xnew(:,:,i+1), cnew(:,:,i)]  = DYNCST(xnew(:,:,i), unew(:,:,i), ...
@@ -69,10 +71,8 @@ for i = 1:N
     cnew(:,:,i) = discount*cnew(:,:,i);
     discount = discount*gamma_;
 end
-sub_trajectories_close_i = cell(size(sub_trajectories));
-sub_trajectories_close_i(:, 1:2) = sub_trajectories(:, 1:2);
 for jj=1:1:size(sub_trajectories, 1)
-    distref = pdist2(sub_trajectories{jj, 5}', xnew(sub_trajectories{jj, 2},:,N+1)');
+    distref = pdist2(sub_trajectories{jj, 6}', xnew(sub_trajectories{jj, 2},:,N+1)');
     [~, closest_xn2] = min(distref);
     
     sub_trajectories_close_i{jj, 3} = sub_trajectories{jj, 3}(:, closest_xn2);
@@ -87,6 +87,9 @@ for jj=1:1:size(sub_trajectories, 1)
     
     sub_trajectories_close{jj, 5}(:,:, N+1) = sub_trajectories{jj, 5}(:, closest_xn2);
     sub_trajectories_close{jj, 5} = permute(sub_trajectories_close{jj, 5}, [1 3 2]);
+    
+    sub_trajectories_close{jj, 6}(:,:, N+1) = sub_trajectories{jj, 6}(:, closest_xn2);
+    sub_trajectories_close{jj, 6} = permute(sub_trajectories_close{jj, 6}, [1 3 2]);
 end
 
 [~, cnew(:,:,N+1)] = DYNCST(xnew(:,:,N+1),nan(m,K,1),sub_trajectories_close_i,i);

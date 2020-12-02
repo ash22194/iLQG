@@ -59,7 +59,20 @@ else
         end
         
         for ii=1:1:size(leaf_nodes,1)
-            err_compute = err_compute + length(leaf_nodes{ii,1})*prod(sys.numPoints(logical(leaf_nodes{ii,2})));
+            NS = sys.num_points(logical(leaf_nodes{ii,2}));
+            NA = sys.num_action_samples(leaf_nodes{ii,1});
+            M = sys.max_iter;
+            MP = sys.max_policy_iter;
+            interp_complexity = 2^length(NS); % Gridded Interpolation
+            step_complexity = 4 * length(NS); % RK4 integration
+            sample_complexity = 1; % randomly sample action
+            action_update_complexity = 2;
+            subpolicy_eval_compute = prod(NS) * (MP * interp_complexity + step_complexity);
+            subpolicy_update_compute = prod(NS) * prod(NA) ...
+                                       * (sample_complexity + step_complexity ...
+                                          + interp_complexity + action_update_complexity);
+                                      
+            err_compute = err_compute + M * (subpolicy_eval_compute + subpolicy_update_compute);
             
             parent_input = leaf_nodes{ii, end-1};
             parent_node_id = find(cellfun(@(x) isempty(setdiff(x, parent_input)) && isempty(setdiff(parent_input, x)),...
@@ -82,7 +95,21 @@ else
         end
         action_tree(leaf_node_ids, :) = [];
     end
-    err_compute = err_compute / (sys.U_DIMS*prod(sys.numPoints));
+    NS = sys.num_points;
+    NA = sys.num_action_samples;
+    M = sys.max_iter;
+    MP = sys.max_policy_iter;
+    interp_complexity = 2^length(NS); % Gridded Interpolation
+    step_complexity = 4 * length(NS); % RK4 integration
+    sample_complexity = 1; % randomly sample action
+    action_update_complexity = 2;
+    policy_eval_compute = prod(NS) * (MP * interp_complexity + step_complexity);
+    policy_update_compute = prod(NS) * prod(NA) ...
+                            * (sample_complexity + step_complexity ...
+                               + interp_complexity + action_update_complexity);
+    joint_compute = M * (policy_eval_compute + policy_update_compute);
+    
+    err_compute = err_compute / joint_compute;
 end
 
 end
