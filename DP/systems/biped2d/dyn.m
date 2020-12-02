@@ -59,7 +59,7 @@ t23 = -t21;
 t26 = sqrt(t24);
 t25 = t23+x5;
 
-out = cell(length(X_DIMS_FREE));
+out = cell(length(X_DIMS_FREE), 1);
 
 for xxi=1:1:length(X_DIMS_FREE)
     xx = X_DIMS_FREE(xxi);

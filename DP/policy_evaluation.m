@@ -94,6 +94,8 @@ function [value, info] = policy_evaluation(sys, Op, sub_policies)
         G_ = cost_total + gamma_*Gnext;
         G_(goal_grid{:}) = 0;
         F.Values = G_;
+        
+        disp(strcat('Policy evaluation iter :', num2str(policy_iter)));
     end
     time_total = toc;
     

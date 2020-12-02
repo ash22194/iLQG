@@ -27,7 +27,7 @@ t7 = mp.*t5;
 t8 = mc+t7;
 t9 = 1.0./t8;
 
-out = cell(length(X_DIMS_FREE));
+out = cell(length(X_DIMS_FREE), 1);
 
 for xxi=1:1:length(X_DIMS_FREE)
     xx = X_DIMS_FREE(xxi);

@@ -113,7 +113,7 @@ t86 = m2.*m3.*t67.*9.0;
 t87 = t39+t40+t52+t53+t54+t80+t81+t82+t84+t85+t86;
 t88 = 1.0./t87;
 
-out = cell(length(X_DIMS_FREE));
+out = cell(length(X_DIMS_FREE),1);
 
 for xxi=1:1:length(X_DIMS_FREE)
     xx = X_DIMS_FREE(xxi);

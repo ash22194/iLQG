@@ -72,12 +72,13 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
     for jj=1:1:size(sub_policies, 1)
         U_SUBDIM = sub_policies{jj,1};
         X_SUBDIM = sub_policies{jj,2};
-        X_SUBDIM_BAR = 1:X_DIMS;
+        [X_SUBDIM, ~] = find(X_DIMS_FREE == X_SUBDIM');
+        X_SUBDIM_BAR = 1:length(X_DIMS_FREE);
         X_SUBDIM_BAR(X_SUBDIM) = [];
         
-        subpolicy_size = num_points;
+        subpolicy_size = num_points(X_DIMS_FREE);
         subpolicy_size(X_SUBDIM_BAR) = 1;
-        subpolicy_newsize = num_points;
+        subpolicy_newsize = num_points(X_DIMS_FREE);
         subpolicy_newsize(X_SUBDIM) = 1;
         
         u(U_SUBDIM) = cellfun(@(x) repmat(reshape(x, subpolicy_size), subpolicy_newsize), sub_policies{jj,3}, 'UniformOutput', false);
@@ -126,7 +127,8 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
             info.time_policy_eval = time_policy_eval;
             info.time_policy_update = time_policy_update;
             sys_ = sys;
-            save(save_file, 'policy', 'info', 'sys_');
+            disp(strcat('Saving at iter', num2str(iter)));
+            save(save_file, 'policy', 'info', 'sys_', '-v7.3', '-nocompression');
         end
         
         G = ones(size(G_));

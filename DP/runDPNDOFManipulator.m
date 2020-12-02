@@ -74,8 +74,8 @@ elseif (n==3)
     sys.R = diag(0.004*(Izz(1)./Izz));
     sys.lims = [-16, 16; -7.5, 7.5; -1, 1]; % action limits
     
-    Op.num_points = 31 * ones(1, sys.X_DIMS);
-    Op.num_action_samples = [15, 5, 2];
+    Op.num_points = [17, 17, 17, 13, 13, 13];
+    Op.num_action_samples = [8, 3, 2];
     
     % Define decompositions to test
 %     p = [linspace(0,n-1,n)', ones(n,1)];
@@ -150,4 +150,4 @@ for dd=1:1:size(u_x,1)
     err_dp(dd) = mean(abs(value{dd,1}(valid_range) - value_joint(valid_range)), 'all');
 end
 
-save(strcat(Op.save_dir, '/', system_name, '/summary.mat'), 'u_x', 'policies', 'value', 'info', 'policies_joint', 'value_joint', 'info_joint', 'err_dp', 'sys', 'Op');
+save(strcat(Op.save_dir, '/', system_name, '/summary.mat'), 'u_x', 'policies', 'value', 'info', 'policies_joint', 'value_joint', 'info_joint', 'err_dp', 'sys', 'Op', '-v7.3', '-nocompression');
