@@ -127,6 +127,7 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
             info.time_policy_eval = time_policy_eval;
             info.time_policy_update = time_policy_update;
             sys_ = sys;
+            disp(strcat('Saving at iter', num2str(iter)));
             save(save_file, 'policy', 'info', 'sys_', '-v7.3', '-nocompression');
         end
         

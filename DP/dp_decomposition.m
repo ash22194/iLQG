@@ -94,6 +94,10 @@ function [policies, value, info] = dp_decomposition(sys, Op, p, s)
 
                 	policies(U_SUBDIM) = cellfun(@(x) repmat(reshape(x, subpolicy_size), subpolicy_newsize), sub_policies{uu,3}, 'UniformOutput', false);
             	end
+            	disp('Saving final');
+            	if (sys.decomposition_id~=0)
+            	    info.state_grid = {};
+            	end
             	save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'policies', 'value', 'info', 'p', 's', '-v7.3', '-nocompression');
             	return;
             end
@@ -129,6 +133,7 @@ function [policies, value, info] = dp_decomposition(sys, Op, p, s)
                 info = decomposition.info;
             else
                 [policy, info] = get_dp_solution(sys_, Op, sub_policies);
+                disp(strcat('Saving policy ', subsystem_id));
                 save(strcat(save_dir, '/', subsystem_id, '.mat'), 'policy', 'info', 'sys_', '-v7.3', '-nocompression');
                 if (isfile(strcat(save_dir, '/', subsystem_id, '_interm.mat')))
                     delete(strcat(save_dir, '/', subsystem_id, '_interm.mat'));

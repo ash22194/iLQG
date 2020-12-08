@@ -16,9 +16,37 @@ if (any(c_eq~=0) || any(c > 0))
 else
     p = round(p);
     s = logical(round(s));
-    assert(any(p(:,1)==0), 'Root of the tree must be 0');
-    assert(all(p(:,1)~=linspace(1,sys.U_DIMS,sys.U_DIMS)'), 'No input can be its own parent');
+    
+    if (isfield(sys, 'decompositionlist'))
+        % Encode decomposition
+        % Compute encoding for decomposition
+        action_coupling = zeros(sys.U_DIMS, sys.U_DIMS);
+        action_dependence = zeros(sys.U_DIMS, sys.U_DIMS);
+        actions = 1:1:sys.U_DIMS;
+        states = s;
+        while(~isempty(actions))
+            acoupled_ = all((ones(length(actions), 1) * states(1,:)) ...
+                            == states, 2);
+            acoupled = actions(acoupled_);
+            action_coupling(acoupled, acoupled) = 1;
 
+            achildren = any(p(:,1) == acoupled, 2);
+            action_dependence(acoupled, achildren) = 1;
+
+            actions(acoupled_) = [];
+            states(acoupled_, :) = [];
+        end
+
+        decomposition_key = [reshape(action_coupling, 1, sys.U_DIMS^2), ...
+                             reshape(action_dependence, 1, sys.U_DIMS^2), ...
+                             reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+        decomposition_key = fastint2str(decomposition_key);
+        if (sys.decompositionlist.isKey(decomposition_key))
+            measure = sys.decompositionlist(decomposition_key);
+            return;
+        end
+    end
+    
     p_ = [linspace(1, sys.U_DIMS, sys.U_DIMS)', p];
     % Build tree
     action_tree = {};
@@ -101,6 +129,10 @@ else
             else
                 measure = sys.measure_func(err_lqr, err_compute);
             end
+            
+            if (isfield(sys, 'decompositionlist'))
+                sys.decompositionlist(decomposition_key) = measure;
+            end
             return;
         end
         
@@ -135,6 +167,10 @@ else
                     measure = (1 - exp(-err_lqr)) * err_compute;
                 else
                     measure = sys.measure_func(err_lqr, err_compute);
+                end
+                
+                if (isfield(sys, 'decompositionlist'))
+                    sys.decompositionlist(decomposition_key) = measure;
                 end
                 return;
             end

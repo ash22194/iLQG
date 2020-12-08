@@ -4,6 +4,7 @@ clc;
 
 %% 
 
+addpath('utils');
 load('data/CartPoleSystem.mat');
 
 fun = @(x) computeLQRMeasurePure(sys, reshape(x(1:sys.U_DIMS^2), sys.U_DIMS, sys.U_DIMS), ...

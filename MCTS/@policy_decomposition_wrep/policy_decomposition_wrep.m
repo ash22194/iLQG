@@ -1,4 +1,4 @@
-classdef policy_decomposition < handle
+classdef policy_decomposition_wrep < handle
     properties
         sys
         p
@@ -19,7 +19,7 @@ classdef policy_decomposition < handle
     
     methods 
         
-        function de = policy_decomposition(varargin)
+        function de = policy_decomposition_wrep(varargin)
             % Constructor
             sys = varargin{1};
             if (~isfield(sys, 'fxfu_func'))
@@ -147,14 +147,12 @@ classdef policy_decomposition < handle
             de.action_tree = action_tree;
             de.decomposition_key = fastint2str(encode_tree_ps(de.action_tree));
             de.parent = parent;
-            if (isa(parent, 'policy_decomposition'))
+            if (isa(parent, 'policy_decomposition_wrep'))
                 de.nodelist = parent.nodelist;
             else
                 de.nodelist = containers.Map();
             end
-            assert(~de.nodelist.isKey(de.decomposition_key) ...
-                   || ~isa(de.nodelist(de.decomposition_key), 'policy_decomposition'), ...
-                   'Node already exists!!');
+            assert(~de.nodelist.isKey(de.decomposition_key), 'Node already exists!!');
             de.compute_measure();
             de.childnodes = [];
             de.childnode_best = 0;
@@ -214,22 +212,32 @@ classdef policy_decomposition < handle
             end
             
             % Find all children that haven't been expanded
-            childnodes_ = cellfun(@(x) de.nodelist(x), de.childnodes, 'UniformOutput', false);
-            childnodes_unexpanded = cellfun(@(x) ~isa(x, 'policy_decomposition'), childnodes_);
+            childnodes_unexpanded = cellfun(@(x) ~isa(x, 'policy_decomposition_wrep'), de.childnodes);
             if (any(childnodes_unexpanded))
-                childnodes_unexplored_fully = childnodes_(childnodes_unexpanded);
+                childnodes_unexplored_fully = de.childnodes(childnodes_unexpanded);
+                
                 max_uctchild = 1;
                 if (~determ)
                     max_uctchild = randperm(length(childnodes_unexplored_fully), 1);
                 end
                 action_tree_ = childnodes_unexplored_fully{max_uctchild};
-                child = policy_decomposition(de.sys, ...
-                                             action_tree_, ...
-                                             de);
+                action_tree_encoding = fastint2str(encode_tree_ps(action_tree_));
+                if (de.nodelist.isKey(action_tree_encoding))
+                    child = de.nodelist(action_tree_encoding);
+                    child.parent = de;
+                else
+                    child = policy_decomposition_wrep(de.sys, ...
+                                                 action_tree_, ...
+                                                 de);
+                end
+                
+                max_uctchild = find(childnodes_unexpanded, max_uctchild);
+                max_uctchild = max_uctchild(end);
+                de.childnodes{max_uctchild} = child;
             else
                 % Expanded but not fully explored?
-                childnodes_unexplored_fully = cellfun(@(x) x.subtree_unexplored, childnodes_);
-                childnodes_unexplored_fully = childnodes_(childnodes_unexplored_fully);
+                childnodes_unexplored_fully = cellfun(@(x) x.subtree_unexplored, de.childnodes);
+                childnodes_unexplored_fully = de.childnodes(childnodes_unexplored_fully);
                 
                 if (isempty(childnodes_unexplored_fully))
                     de.subtree_unexplored = false;
@@ -252,7 +260,7 @@ classdef policy_decomposition < handle
                     max_uctchild = best_children(randperm(length(best_children), 1));
                 end
                 child = childnodes_unexplored_fully{max_uctchild};
-                child.parent = de; % Which parent do you keep? - The latest (best? worst?)
+                child.parent = de; % Which parent do you keep? - The latest (best?)
                 assert(de.nodelist.isKey(child.decomposition_key), 'Child node missing from nodelist!');
             end
             

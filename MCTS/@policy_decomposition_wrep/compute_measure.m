@@ -1,6 +1,6 @@
 function measure = compute_measure(de)
     
-    if (de.nodelist.isKey(de.decomposition_key) && isa(de.nodelist(de.decomposition_key), 'policy_decomposition'))
+    if (de.nodelist.isKey(de.decomposition_key))
         measure = de.nodelist(de.decomposition_key).measure;
         return;
     end
