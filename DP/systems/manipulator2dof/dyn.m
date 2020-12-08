@@ -36,7 +36,7 @@ t14 = cos(t13);
 t15 = sin(t13);
 t16 = 1.0./t8;
 
-out = cell(length(X_DIMS_FREE));
+out = cell(length(X_DIMS_FREE), 1);
 
 for xxi=1:1:length(X_DIMS_FREE)
     xx = X_DIMS_FREE(xxi);

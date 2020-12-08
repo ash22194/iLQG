@@ -1,4 +1,4 @@
-function [value, info] = policy_evaluation(sys, Op, sub_policies)
+function [value, info] = policy_evaluation_gpu(sys, Op, sub_policies)
 %% Parameters
     X_DIMS            = sys.X_DIMS;
     X_DIMS_FREE       = sys.X_DIMS_FREE;
@@ -27,7 +27,7 @@ function [value, info] = policy_evaluation(sys, Op, sub_policies)
     grid_indices = cell(length(X_DIMS_FREE), 1);
     for xxi = 1:1:length(X_DIMS_FREE)
         xx = X_DIMS_FREE(xxi);
-        grid_indices{xxi} = linspace(limits(xx,1), limits(xx,2), num_points(xx));
+        grid_indices{xxi} = gpuArray(linspace(limits(xx,1), limits(xx,2), num_points(xx)));
     end
     [x{X_DIMS_FREE}] = ndgrid(grid_indices{:});
     
@@ -36,7 +36,7 @@ function [value, info] = policy_evaluation(sys, Op, sub_policies)
     u(U_DIMS_FIXED) = num2cell(zeros(length(U_DIMS_FIXED), 1));
     for uui = 1:1:length(U_DIMS_FREE)
         uu = U_DIMS_FREE(uui);
-        u{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) * rand(num_points(X_DIMS_FREE));
+        u{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) * rand(num_points(X_DIMS_FREE), 'gpuArray');
     end
     for jj=1:1:size(sub_policies, 1)
         U_SUBDIM = sub_policies{jj,1};
@@ -69,33 +69,32 @@ function [value, info] = policy_evaluation(sys, Op, sub_policies)
     end
     cost_total = cost_state + cost_action_controlled;
     
-    goal_grid = zeros(length(X_DIMS_FREE), 1);
+    goal_grid = gpuArray(zeros(length(X_DIMS_FREE), 1));
     for xxi=1:1:length(X_DIMS_FREE)
         xx = X_DIMS_FREE(xxi);
         [~, goal_grid(xxi)] = min(abs(grid_indices{xxi} - goal(xx)));
     end
     goal_grid = num2cell(goal_grid);
     
-    G_ = zeros(num_points(X_DIMS_FREE));
-    G = ones(size(G_));
-    F = griddedInterpolant(x{X_DIMS_FREE}, G_);
+    G_ = gpuArray(zeros(num_points(X_DIMS_FREE)));
+    G = gpuArray(ones(size(G_)));
+    
     policy_iter = 0;
     time_total = 0;
     
     tic;
-    x_ = dyn_finite_rk4(sys, x, u, dt); % Next state after a step
+    x_ = dyn_finite_rk4_gpu(sys, x, u, dt); % Next state after a step
     while ((max(abs(G_ - G), [], 'all') > gtol) && (policy_iter < max_iter))
         % Iterate to estimate value function
         policy_iter = policy_iter + 1;
         disp(sprintf('Policy Iter : %d', policy_iter));
         G = G_;
-        Gnext = F(x_{X_DIMS_FREE});
+        Gnext = interpn_gpu(x{X_DIMS_FREE}, G_, x_{X_DIMS_FREE});
         Gnext(goal_grid{:}) = 0;
 
         % Update value function
         G_ = cost_total + gamma_*Gnext;
         G_(goal_grid{:}) = 0;
-        F.Values = G_;
     end
     time_total = toc;
     

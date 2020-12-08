@@ -1,4 +1,4 @@
-function [policies, value, info] = dp_decomposition(sys, Op, p, s)
+function [policies, value, info] = dp_decomposition_gpu(sys, Op, p, s)
 %%  Inputs
     % sys    - system description
     % Op     - optimization parameters
@@ -72,7 +72,7 @@ function [policies, value, info] = dp_decomposition(sys, Op, p, s)
             	sys_.U_DIMS_CONTROLLED = (1:sys_.U_DIMS)';
             	sys_.U_DIMS_FIXED = [];
             	sub_policies = leaf_nodes{1, 3};
-            	[value, info] = policy_evaluation(sys_, Op, sub_policies);
+            	[value, info] = policy_evaluation_gpu(sys_, Op, sub_policies);
             
             	policies = cell(sys.U_DIMS, 1);
            	info.time_policy_eval = info.time_total;
@@ -128,7 +128,7 @@ function [policies, value, info] = dp_decomposition(sys, Op, p, s)
                 policy = decomposition.policy;
                 info = decomposition.info;
             else
-                [policy, info] = get_dp_solution(sys_, Op, sub_policies);
+                [policy, info] = get_dp_solution_gpu(sys_, Op, sub_policies);
                 save(strcat(save_dir, '/', subsystem_id, '.mat'), 'policy', 'info', 'sys_', '-v7.3', '-nocompression');
                 if (isfile(strcat(save_dir, '/', subsystem_id, '_interm.mat')))
                     delete(strcat(save_dir, '/', subsystem_id, '_interm.mat'));
