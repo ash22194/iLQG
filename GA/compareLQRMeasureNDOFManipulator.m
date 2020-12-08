@@ -5,7 +5,7 @@ clc;
 %% 
 
 restoredefaultpath;
-n = 2;
+n = 3;
 system_name = sprintf('manipulator%ddof', n);
 addpath(strcat('../iLQG_boxQP/new_systems/', system_name));
 load(strcat('../iLQG_boxQP/new_systems/', system_name, '/sys.mat'), 'sys');
@@ -16,12 +16,12 @@ if (n==2)
 %     sys.m = [0.5; 0.1]; % kg
 %     sys.l = [0.25; 0.125]; % m
     sys.m = [2.5; 0.5]/2; % kg
-    sys.l = [0.5; 0.25]; % m
+    sys.l = [0.5; 0.25]/2; % m
     Izz = sys.m.*((sys.l));
 %     sys.Q = diag([8, 8, 0.5, 0.5])/5;
     sys.Q = diag([8, 8, 0.6, 0.6])/5;
     sys.R = diag(0.003*(Izz(1)./Izz).^2);
-    sys.lims = 15*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
+    sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
 
     % Define decompositions to test
     u_x = [];
@@ -73,7 +73,7 @@ elseif (n==3)
     pseudo_inputs{1} = {{1, [2,3]}; {2, [1,3]}; {3, [1,2]}}; % r = 2
     pseudo_inputs{2} = {{1, 2, 3}}; % r = 3
     
-    state_assignments{1} = {{1, [2,3]}; {2, [1,3]}; {3, [1,2]}};
+    state_assignments{1} = {{1, [2,3]}; {2, [1,3]}; {3, [1,2]}; {[], [1,2,3]}};
     state_assignments{2} = {{1, 2, 3}};
     
     for r=1:1:size(pseudo_inputs, 1)
@@ -95,6 +95,9 @@ elseif (n==3)
                     for ors=1:1:size(orders_of_states, 1)
                        state_order = orders_of_states(ors,:);
                        ordered_states = current_state_assignment(state_order);
+                       if (isempty(ordered_states{r+1}))
+                           continue;
+                       end
                        % Define state assignment
                        s = zeros(n, 2*n);
                        for ors_=1:1:(r+1)
@@ -135,6 +138,9 @@ elseif (n==3)
         end
     end
     
+    load('../iLQG_boxQP/data/manipulator3dof/manipulator3dof_paretofront.mat');
+    u_x = u_xp;
+    
 elseif (n==4)
     sys.m = [5.4; 1.8; 0.6; 0.2]; % kg
     sys.l = [0.2; 0.5; 0.25; 0.125]; % m
@@ -144,9 +150,19 @@ elseif (n==4)
     sys.lims = [-24, 24; -15, 15; -7.5, 7.5; -1, 1]; % action limits
     
     % Define decompositions to test
-    p = [linspace(0,n-1,n)', ones(n,1)];
-    s = repmat(eye(n), [1, 2]);
-    u_x = [reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    u_x = [];
+    pseudo_inputs{1} = {{1, [2,3,4]}; {2, [1,3,4]}; {3, [1,2,4]}; {4, [1,2,3]};
+                        {[1,2], [3,4]}; {[1,3], [2,4]}; {[1,4], [2,3]}}; % r = 2
+    pseudo_inputs{2} = {{1, 2, [3,4]}; {1, 3, [2,4]}; {1, 4, [2,3]}; {2, 3, [1,4]}; {2, 4, [1,3]}; {3, 4, [1,2]}}; % r = 3
+    pseudo_inputs{3} = {{1, 2, 3, 4}}; % r = 4
+    
+    state_assignments{1} = {{1, [2,3,4]}; {2, [1,3,4]}; {3, [1,2,4]}; {4, [1,2,3]};
+                            {[1,2], [3,4]}; {[1,3], [2,4]}; {[1,4], [2,3]}; {[], [1,2,3,4]}};
+    state_assignments{2} = {{1, [2,3,4], []}; {2, [1,3,4], []}; {3, [1,2,4], []}; {4, [1,2,3], []};
+                            {[1,2], [3,4], []}; {[1,3], [2,4], []}; {[1,4], [2,3], []}; {[], [1,2,3,4], []};
+                            {1, 2, [3,4]}; {1, 3, [2,4]}; {1, 4, [2,3]}; {2, 3, [1,4]}; {2, 4, [1,3]}; {3, 4, [1,2]}};
+    state_assignments{3} = {{1, 2, 3, 4}};
+    
     
 end
 

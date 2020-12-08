@@ -5,7 +5,7 @@ clc;
 %% 
 
 restoredefaultpath();
-system_name = 'manipulator4dof';
+system_name = 'manipulator3dof';
 addpath(strcat('../iLQG_boxQP/new_systems/', system_name));
 addpath('utils');
 load(strcat('data/', system_name, 'System.mat'), 'sys');

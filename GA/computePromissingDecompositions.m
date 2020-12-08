@@ -56,8 +56,8 @@ options.CrossoverFcn = @(parents, options, nvars, fitness_fcn, unused, populatio
                          crossoverfunction(sys, parents, options, nvars, fitness_fcn, unused, population);
 options.MutationFcn = @(parents, options, nvars, fitness_fcn, state, score, population) ...
                          mutationfunction(sys, parents, options, nvars, fitness_fcn, state, score, population);
-MaxGATime = 300;
-MaxTotalTime = 300;
+MaxGATime = 1800;
+MaxTotalTime = 1800;
 ga_solutions = cell(0, 6); % x, err_joint, exitflag, output, population, scores
 tic;
 while((MaxTotalTime - toc) > 0)
@@ -107,8 +107,8 @@ sampled_population = cell2mat(sampled_population(unique_sampled_population_id, 1
 sampled_population = sampled_population(sampled_population_order(1:min(num_to_extract, size(sampled_population, 1))), :);
 sampled_population_measure = sampled_population_measure(1:size(sampled_population, 1), :);
 
-% save(strcat('data/', system_name,'_GA_RandomSampled_',num2str(MaxTotalTime),'.mat'), ...
-%      'sys', 'final_population', 'final_scores', 'sampled_population', 'sampled_population_measure', 'MaxTotalTime', 'MaxGATime', 'num_to_extract');
+save(strcat('data/', system_name,'_GA_RandomSampled_',num2str(MaxTotalTime),'.mat'), ...
+     'sys', 'final_population', 'final_scores', 'sampled_population', 'sampled_population_measure', 'MaxTotalTime', 'MaxGATime', 'num_to_extract');
 
 %% Functions
 
