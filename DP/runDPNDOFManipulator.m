@@ -5,7 +5,7 @@ clc;
 %% 
 
 restoredefaultpath;
-n = 3;
+n = 4;
 system_name = sprintf('manipulator%ddof', n);
 addpath(strcat('systems/', system_name));
 addpath('systems');
@@ -74,13 +74,10 @@ elseif (n==3)
     sys.R = diag(0.004*(Izz(1)./Izz));
     sys.lims = [-16, 16; -7.5, 7.5; -1, 1]; % action limits
     
-    Op.num_points = 31 * ones(1, sys.X_DIMS);
-    Op.num_action_samples = [15, 5, 2];
+    Op.num_points = [17, 17, 17, 13, 13, 13];
+    Op.num_action_samples = [8, 3, 2];
     
     % Define decompositions to test
-%     p = [linspace(0,n-1,n)', ones(n,1)];
-%     s = repmat(eye(n), [1, 2]);
-%     u_x = [reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
     load('data/manipulator3dof/manipulator3dof_paretofront.mat');
     u_x = u_xp;
     
@@ -92,13 +89,12 @@ elseif (n==4)
     sys.R = diag([0.002; 0.004*(Izz(2)./Izz(2:end))]);
     sys.lims = [-24, 24; -15, 15; -7.5, 7.5; -1, 1]; % action limits
     
-    Op.num_points = 31 * ones(1, sys.X_DIMS);
-    Op.num_action_samples = 15 * ones(1, sys.U_DIMS);
+    Op.num_points = [9,9,9,9,7,7,7,7];
+    Op.num_action_samples = [6,4,3,2];
     
     % Define decompositions to test
-    p = [linspace(0,n-1,n)', ones(n,1)];
-    s = repmat(eye(n), [1, 2]);
-    u_x = [reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    load('data/manipulator3dof/manipulator3dof_paretofront.mat');
+    u_x = u_xp;
 end
 sys.g = 9.81; % m/s^2
 sys.dt = 0.001;
@@ -115,39 +111,42 @@ Op.gtol = 1e-5;
 Op.u_mean_tol = (sys.lims(:,2) - sys.lims(:,1)) * 2e-6;
 Op.u_max_tol = (sys.lims(:,2) - sys.lims(:,1)) / 12;
 Op.save_dir = 'data';
-Op.reuse_policy = true;
+Op.reuse_policy = false;
 
 policies = cell(size(u_x,1), 1);
 value = cell(size(u_x,1), 1);
 info = cell(size(u_x,1), 1);
 
-for dd=1:1:size(u_x,1)
-    p = reshape(u_x(dd, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
-    s = reshape(u_x(dd, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
+% for dd=5:1:size(u_x,1)
+%     p = reshape(u_x(dd, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
+%     s = reshape(u_x(dd, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
     
-    disp(sprintf('Decomposition %d/%d', dd, size(u_x,1)));
-    sys.decomposition_id = dd;
-    [policies{dd,1}, value{dd,1}, info{dd,1}] = dp_decomposition(sys, Op, p, s);
-end
+%     disp(sprintf('Decomposition %d/%d', dd, size(u_x,1)));
+%     sys.decomposition_id = dd;
+% %     [policies{dd,1}, value{dd,1}, info{dd,1}] = dp_decomposition(sys, Op, p, s);
+% end
 
 p_joint = [zeros(n,1), ones(n,1)];
 s_joint = ones(sys.U_DIMS, sys.X_DIMS);
 disp('Joint');
 sys.decomposition_id = 0;
-[policies_joint, value_joint, info_joint] = dp_decomposition(sys, Op, p_joint, s_joint);
+% profile on;
+[policies_joint, value_joint, info_joint] = dp_decomposition_gpu(sys, Op, p_joint, s_joint);
+% profile off;
+% profsave(profile('info'), 'data/manipulator3dof_joint');
 
-state_bounds = [repmat([-pi/3, pi/3], [n,1]);
-               repmat([-0.5, 0.5], [n,1])];
-state_bounds(1,:) = state_bounds(1,:) + pi;
-state_bounds = mat2cell(state_bounds, ones(2*n,1), 2);
+% state_bounds = [repmat([-pi/3, pi/3], [n,1]);
+%                repmat([-0.5, 0.5], [n,1])];
+% state_bounds(1,:) = state_bounds(1,:) + pi;
+% state_bounds = mat2cell(state_bounds, ones(2*n,1), 2);
 
-valid_range = cellfun(@(x,y) (x>y(1)) & (x<y(2)), info_joint.state_grid, state_bounds, 'UniformOutput', false);
-valid_range = permute(reshape(permute(cell2mat(valid_range), [linspace(2, 2*n, 2*n-1), 1]), [Op.num_points, 2*n]), [2*n, linspace(1,2*n-1,2*n-1), 2*n+1]);
-valid_range = logical(prod(valid_range, 2*n+1));
+% valid_range = cellfun(@(x,y) (x>y(1)) & (x<y(2)), info_joint.state_grid, state_bounds, 'UniformOutput', false);
+% valid_range = permute(reshape(permute(cell2mat(valid_range), [linspace(2, 2*n, 2*n-1), 1]), [Op.num_points, 2*n]), [2*n, linspace(1,2*n-1,2*n-1), 2*n+1]);
+% valid_range = logical(prod(valid_range, 2*n+1));
 
-err_dp = zeros(1, size(u_x,1));
-for dd=1:1:size(u_x,1)
-    err_dp(dd) = mean(abs(value{dd,1}(valid_range) - value_joint(valid_range)), 'all');
-end
+% err_dp = zeros(1, size(u_x,1));
+% for dd=1:1:size(u_x,1)
+%     err_dp(dd) = mean(abs(value{dd,1}(valid_range) - value_joint(valid_range)), 'all');
+% end
 
-save(strcat(Op.save_dir, '/', system_name, '/summary.mat'), 'u_x', 'policies', 'value', 'info', 'policies_joint', 'value_joint', 'info_joint', 'err_dp', 'sys', 'Op');
+% save(strcat(Op.save_dir, '/', system_name, '/summary.mat'), 'u_x', 'policies', 'value', 'info', 'policies_joint', 'value_joint', 'info_joint', 'err_dp', 'sys', 'Op');
