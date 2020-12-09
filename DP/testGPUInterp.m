@@ -5,8 +5,8 @@ clc;
 %% 
 
 addpath('cuda');
-num_dims = 1;
-num_points = [69]';
+num_dims = 8;
+num_points = [25, 30, 50, 2, 2, 2, 3, 2]';
 if (num_dims==1)
     blah = rand(num_points, 1);
 else
@@ -24,7 +24,7 @@ end
 
 tic;
 G = griddedInterpolant(grid{:}, blah);
-for ii=1:1:100
+for ii=1:1:10
     grid_query_interpn = G(query{:});
 end
 time_interpn = toc;
@@ -34,21 +34,15 @@ query = cellfun(@(x) gpuArray(x), query, 'UniformOutput', false);
 blah = gpuArray(blah);
 
 tic;
-for ii=1:1:100
-    grid_query_custom_old = interpn(grid{:}, blah, query{:});
+for ii=1:1:10
+    grid_query_custom_old = interpn_gpu(grid{:}, blah, query{:});
 end
 time_custom_old = toc;
 
-nlinear = sprintf('calc_average%d',num_dims);
-k = parallel.gpu.CUDAKernel(strcat('cuda/', nlinear, '.ptx'), ...
-                            strcat('cuda/', nlinear, '.cu'), ...
-                            nlinear);
-k.ThreadBlockSize = 1024;
-k.GridSize = 1024;
 tic;
-for ii=1:1:100
-    grid_query_custom = interpn_gpukernel(grid{:}, blah, query{:}, k);
+for ii=1:1:10
+    grid_query_custom = interpn_gpukernel(grid{:}, blah, query{:});
+%     grid_query_custom = feval(k, query{:}, blah, num_points{:}, dx{:}, minx{:}, corners_index);
 end
 time_custom = toc;
-
 max_discrepancy = max(abs(grid_query_custom - grid_query_interpn), [], 'all');

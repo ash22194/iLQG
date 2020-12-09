@@ -1,9 +1,9 @@
 __global__ void calc_average1(double * Xi1, const double * V, const int Nx1, const double dx1, const double minx1, const int * corners_index)
 {
-    int index = blockIdx.x + blockIdx.y * gridDim.x 
+    int index = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x * blockDim.y 
                 + (threadIdx.x + threadIdx.y * blockDim.x);
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
-    
+
     while (index < Nx1)
     {
         Xi1[index] = (Xi1[index] - minx1) / dx1;

@@ -23,7 +23,7 @@ for ii=1:1:n
     cb(ii, :) = corners - 2*r;
     corners = r;
 end
-cb = num2cell(cb + 1, 2);
+cb = num2cell(flip(cb + 1, 1), 2);
 corners_index = sub2ind(Nx, cb{:}) - 1;
 
 if (n==1)
@@ -46,18 +46,6 @@ elseif (n==6)
 %     out = calc_average6(xi{:});
 elseif (n==7)
    out = arrayfun(@calc_average7, xi{:});
-   times = zeros(10,1);
-   
-   profile on;
-   tic;
-   for kk=1:1:10
-       times(kk) = gputimeit(@() arrayfun(@calc_average7, xi{:}));
-%         out = arrayfun(@calc_average7, xi{:});
-   end
-   time_arrayfun = toc
-   sum(times)
-   profile off;
-   profsave(profile('info'), 'data/gpuprofile');
 %     out = calc_average7(xi{:});
 elseif (n==8)
    out = arrayfun(@calc_average8, xi{:});
@@ -73,7 +61,7 @@ end
         Xi1 = Xi1 - loc1; % Weights from the 0 corner
         scalar_loc = loc1;
         average_value = (1 - Xi1) .* V(scalar_loc + corners_index(1)) ...
-                        + Xi1 .* V(scalar_loc + corners_index(2));
+                            + Xi1 .* V(scalar_loc + corners_index(2));
     end
     
     function average_value = calc_average2(Xi1, Xi2)
