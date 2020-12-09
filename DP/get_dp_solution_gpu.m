@@ -32,7 +32,7 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
         save_every = Op.save_every; 
     else 
         save_every = max_iter / 10; 
-    end;
+    end
     reuse_policy   = isfield(Op, 'reuse_policy') && (Op.reuse_policy) && (isfile(save_file));
     
 %% Initialize 
@@ -100,6 +100,7 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
     end
     cost_fixed = cost_state + cost_action_controlled;
     
+    % Identify goal location in grid co-ordinates
     goal_grid = gpuArray(zeros(length(X_DIMS_FREE), 1));
     for xxi=1:1:length(X_DIMS_FREE)
         xx = X_DIMS_FREE(xxi);
@@ -107,6 +108,8 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
     end
     goal_grid = num2cell(goal_grid);
     
+    % Initialize policy iteration
+    [kernel_interp, kernel_inputs] = generate_interp_kernel(x{X_DIMS_FREE});
     constant_policy_count = 0;
     iter = info.iter;
     time_total = info.time_total;
@@ -147,13 +150,14 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
             % Iterate to estimate value function
             G = G_;
             policy_iter = policy_iter + 1;
-            Gnext = interpn_gpu(x{X_DIMS_FREE}, G_, x_{X_DIMS_FREE});
+%             Gnext = interpn_gpu(x{X_DIMS_FREE}, G_, x_{X_DIMS_FREE});
+            Gnext = feval(kernel_interp, x_{X_DIMS_FREE}, G_, kernel_inputs{:});
             Gnext(goal_grid{:}) = 0;
             
             % Update value function
             G_ = cost_total + gamma_*Gnext;
             G_(goal_grid{:}) = 0;
-            disp(sprintf('Policy Iter : %d', policy_iter));
+            fprintf('Policy Iter : %d\n', policy_iter);
         end
         time_policy_eval_curr = toc(time_policy_eval_start);
         time_policy_eval = time_policy_eval + time_policy_eval_curr;
@@ -175,11 +179,10 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
                 cost_action_ = cost_action_ + dt * R(uu, uu) * (u_{uu} - u0(uu)).^2;
             end
             
-%             tic;
             x__ = dyn_finite_rk4_gpu(sys, x, u_, dt);
-%             time_dyn = toc;
             
-            Gnext_ = interpn_gpu(x{X_DIMS_FREE}, G_, x__{X_DIMS_FREE});
+%             Gnext_ = interpn_gpu(x{X_DIMS_FREE}, G_, x__{X_DIMS_FREE});
+            Gnext_ = feval(kernel_interp, x__{X_DIMS_FREE}, G_, kernel_inputs{:});
             Gnext_(goal_grid{:}) = 0;
             Gaction = cost_fixed + cost_action_ + gamma_*Gnext_;
             Gaction(goal_grid{:}) = 0;
@@ -192,7 +195,7 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
                 unew{uu} = (u_{uu} .* actionUpdate) + (unew{uu} .* actionUpdateBar);
                 unew{uu}(goal_grid{:}) = u0(uu);
             end
-            disp(sprintf('Policy Update : %d', i));
+            fprintf('Policy Update : %d\n', i);
         end
         
         for uui = 1:1:length(U_DIMS_FREE)
@@ -235,4 +238,41 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
     info.time_policy_eval = time_policy_eval;
     info.time_policy_update = time_policy_update;
 
+end
+
+function [k, inputs] = generate_interp_kernel(varargin)
+% x1, ..., xn generated from ndgrid
+
+n = nargin;
+grid_sizes = cell2mat(cellfun(@(x) size(x), varargin(:), 'UniformOutput', false));
+size_compare = ones(n ,1) * grid_sizes(1,:) == grid_sizes;
+assert(all(size_compare), "All xi must have the same dimensions");
+
+Nx = grid_sizes(1,:)';
+x1 = cellfun(@(y) y(1), varargin(:)); % Min value in each dimension
+dx = cellfun(@(y) y(end) - y(1), varargin(:)) ./ (Nx(1:n) - 1); % Discretizatio in each dimension
+
+% Generate corners of the n dimensional hyper-cube
+corners = 0:1:(2^n - 1);
+cb = zeros(n, 2^n);
+for ii=1:1:n
+    r = floor(corners / 2);
+    cb(ii, :) = corners - 2*r;
+    corners = r;
+end
+cb = num2cell(flip(cb + 1, 1), 2);
+corners_index = sub2ind(Nx, cb{:}) - 1;
+
+Nx = num2cell(Nx(1:n));
+x1 = num2cell(x1);
+dx = num2cell(dx);
+corners_index = num2cell(corners_index(:));
+inputs = cat(1, Nx, dx, x1, corners_index);
+
+nlinear = sprintf('calc_average%d',n);
+k = parallel.gpu.CUDAKernel(strcat('cuda/', nlinear, '.ptx'), ...
+                            strcat('cuda/', nlinear, '.cu'), ...
+                            nlinear);
+k.ThreadBlockSize = 896;
+k.GridSize = 1024;
 end
