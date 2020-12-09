@@ -50,7 +50,7 @@ __global__ void calc_average5(double* Xi1, const double* Xi2, const double* Xi3,
                                                                        + xi4 * ((1 - xi5) * V[scalar_loc + corners_index[14]]
                                                                                     + xi5 * V[scalar_loc + corners_index[15]]))))
                          + Xi1[index] * ((1 - xi2) * ((1 - xi3) * ((1 - xi4) * ((1 - xi5) * V[scalar_loc + corners_index[16]]
-                                                                                    + xi5 * V[scalar_loc + corners_index[7]])
+                                                                                    + xi5 * V[scalar_loc + corners_index[17]])
                                                                        + xi4 * ((1 - xi5) * V[scalar_loc + corners_index[18]]
                                                                                     + xi5 * V[scalar_loc + corners_index[19]]))
                                                           + xi3 * ((1 - xi4) * ((1 - xi5) * V[scalar_loc + corners_index[20]]

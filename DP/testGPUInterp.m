@@ -5,12 +5,12 @@ clc;
 %% 
 
 addpath('cuda');
-num_dims = 8;
-num_points = [25, 30, 50, 2, 2, 2, 3, 2]';
+num_dims = 5;
+num_points = [20, 20, 20, 20, 20]';
 if (num_dims==1)
-    blah = rand(num_points, 1);
+    values = rand(num_points, 1);
 else
-    blah = rand(num_points');
+    values = rand(num_points');
 end
 grid_indices = cell(num_dims, 1);
 grid = cell(num_dims, 1);
@@ -18,31 +18,79 @@ query = cell(num_dims, 1);
 for xxi = 1:1:num_dims
     xx = num_points(xxi);
     grid_indices{xxi} = linspace(0, 1, num_points(xxi));
-    query{xxi} = rand(size(blah));
+    query{xxi} = rand(size(values));
 end
 [grid{:}] = ndgrid(grid_indices{:});
+num_iter = 10;
 
+% Interpolation on CPU
 tic;
-G = griddedInterpolant(grid{:}, blah);
-for ii=1:1:10
-    grid_query_interpn = G(query{:});
+G = griddedInterpolant(grid{:}, values);
+for ii=1:1:num_iter
+    grid_query_cpu = G(query{:});
 end
-time_interpn = toc;
+time_cpu = toc;
 
 grid = cellfun(@(x) gpuArray(x), grid, 'UniformOutput', false);
 query = cellfun(@(x) gpuArray(x), query, 'UniformOutput', false);
-blah = gpuArray(blah);
+values = gpuArray(values);
 
+% Interpolation on GPU using in-built MATLAB function
 tic;
-for ii=1:1:10
-    grid_query_custom_old = interpn_gpu(grid{:}, blah, query{:});
+for ii=1:1:num_iter
+    if (num_dims > 5)
+        grid_query_gpu = grid_query_cpu;
+    else
+        grid_query_gpu = interpn(grid{:}, values, query{:});
+    end
 end
-time_custom_old = toc;
+time_gpu = toc;
 
+% Interpolation when feval is called inside the function
 tic;
-for ii=1:1:10
-    grid_query_custom = interpn_gpukernel(grid{:}, blah, query{:});
-%     grid_query_custom = feval(k, query{:}, blah, num_points{:}, dx{:}, minx{:}, corners_index);
+for ii=1:1:num_iter
+    grid_query_custom = interpn_gpukernel(grid{:}, values, query{:});
 end
 time_custom = toc;
-max_discrepancy = max(abs(grid_query_custom - grid_query_interpn), [], 'all');
+
+% Interpolation when feval is called from the main script
+tic;
+nlinear = sprintf('calc_average%d',num_dims);
+k = parallel.gpu.CUDAKernel(strcat('cuda/', nlinear, '.ptx'), ...
+                            strcat('cuda/', nlinear, '.cu'), ...
+                            nlinear);
+k.ThreadBlockSize = 896;
+k.GridSize = 1024;
+Nx = size(grid{1}); % Number of grid points in each dimension
+x1 = cellfun(@(y) y(1), grid); % Min value in each dimension
+dx = cellfun(@(y) y(end) - y(1), grid) ./ (Nx(1:num_dims)' - 1); % Discretizatio in each dimension
+corners = 0:1:(2^num_dims - 1);
+cb = zeros(num_dims, 2^num_dims);
+for ii=1:1:num_dims
+    r = floor(corners / 2);
+    cb(ii, :) = corners - 2*r;
+    corners = r;
+end
+cb = num2cell(flip(cb + 1,1), 2);
+corners_index = sub2ind(Nx, cb{:}) - 1;
+x1 = num2cell(x1(:));
+Nx = Nx(1:num_dims);
+Nx = num2cell(Nx(:));
+dx = num2cell(dx(:));
+
+for ii=1:1:num_iter
+    grid_query_custom_kernel = feval(k, query{:}, values, Nx{:}, dx{:}, x1{:}, corners_index);
+end
+time_custom_kernel = toc;
+
+fprintf('Time (CPU) : %.4f\nTime (GPU built-in) : %.4f\nTime (GPU custom) : %.4f\nTime (GPU kernel) : %.4f\n', ...
+         time_cpu, time_gpu, time_custom, time_custom_kernel);
+
+% Calculate deviation in interpolation value on GPU vs CPU using different methods
+
+max_discrepancy_gpu = max(abs(grid_query_gpu - grid_query_cpu), [], 'all');
+max_discrepancy_custom = max(abs(grid_query_custom - grid_query_cpu), [], 'all');
+max_discrepancy_custom_kernel = max(abs(grid_query_custom_kernel - grid_query_cpu), [], 'all');
+
+fprintf('Discrepancy (GPU built-in) : %.5f\nDiscrepancy (GPU custom) : %.5f\nDiscrepancy (GPU kernel) : %.5f\n', ...
+        max_discrepancy_gpu, max_discrepancy_custom, max_discrepancy_custom_kernel);
