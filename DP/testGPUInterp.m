@@ -5,8 +5,8 @@ clc;
 %% 
 
 addpath('cuda');
-num_dims = 5;
-num_points = [20, 20, 20, 20, 20]';
+num_dims = 8;
+num_points = [9, 9, 9, 9, 7, 7, 7, 7]';
 if (num_dims==1)
     values = rand(num_points, 1);
 else
@@ -14,25 +14,33 @@ else
 end
 grid_indices = cell(num_dims, 1);
 grid = cell(num_dims, 1);
-query = cell(num_dims, 1);
 for xxi = 1:1:num_dims
     xx = num_points(xxi);
     grid_indices{xxi} = linspace(0, 1, num_points(xxi));
-    query{xxi} = rand(size(values));
 end
 [grid{:}] = ndgrid(grid_indices{:});
-num_iter = 10;
+
+num_iter = 5;
+query = cell(num_iter, 1);
+for jj=1:1:num_iter
+    query{jj} = cell(num_dims, 1);
+    for xxi=1:1:num_dims
+        query{jj}{xxi} = rand(size(values));
+    end
+end
 
 % Interpolation on CPU
 tic;
 G = griddedInterpolant(grid{:}, values);
 for ii=1:1:num_iter
-    grid_query_cpu = G(query{:});
+    grid_query_cpu = G(query{ii}{:});
 end
 time_cpu = toc;
 
 grid = cellfun(@(x) gpuArray(x), grid, 'UniformOutput', false);
-query = cellfun(@(x) gpuArray(x), query, 'UniformOutput', false);
+for jj=1:1:num_iter
+    query{jj} = cellfun(@(x) gpuArray(x), query{jj}, 'UniformOutput', false);
+end
 values = gpuArray(values);
 
 % Interpolation on GPU using in-built MATLAB function
@@ -41,7 +49,7 @@ for ii=1:1:num_iter
     if (num_dims > 5)
         grid_query_gpu = grid_query_cpu;
     else
-        grid_query_gpu = interpn(grid{:}, values, query{:});
+        grid_query_gpu = interpn(grid{:}, values, query{ii}{:});
     end
 end
 time_gpu = toc;
@@ -49,12 +57,11 @@ time_gpu = toc;
 % Interpolation when feval is called inside the function
 tic;
 for ii=1:1:num_iter
-    grid_query_custom = interpn_gpukernel(grid{:}, values, query{:});
+    grid_query_custom = interpn_gpukernel(grid{:}, values, query{ii}{:});
 end
 time_custom = toc;
 
 % Interpolation when feval is called from the main script
-tic;
 nlinear = sprintf('calc_average%d',num_dims);
 k = parallel.gpu.CUDAKernel(strcat('cuda/', nlinear, '.ptx'), ...
                             strcat('cuda/', nlinear, '.cu'), ...
@@ -78,10 +85,13 @@ Nx = Nx(1:num_dims);
 Nx = num2cell(Nx(:));
 dx = num2cell(dx(:));
 
+time_feval = zeros(num_iter, 1);
 for ii=1:1:num_iter
-    grid_query_custom_kernel = feval(k, query{:}, values, Nx{:}, dx{:}, x1{:}, corners_index);
+    tic;
+    grid_query_custom_kernel = feval(k, query{ii}{:}, values, Nx{:}, dx{:}, x1{:}, corners_index);
+    time_feval(ii) = toc;
 end
-time_custom_kernel = toc;
+time_custom_kernel = sum(time_feval);
 
 fprintf('Time (CPU) : %.4f\nTime (GPU built-in) : %.4f\nTime (GPU custom) : %.4f\nTime (GPU kernel) : %.4f\n', ...
          time_cpu, time_gpu, time_custom, time_custom_kernel);
