@@ -200,7 +200,7 @@ __global__ void dyn(double* x1, double* x2, double* x3, double* x4,
         double t191 = t11 + t89;
         double t200 = t70 + t92;
         double t201 = t53 + t89;
-        double t204 = t33 * t117;
+//         double t204 = t33 * t117;
         double t207 = t53 + t100;
         double t208 = m1 * m2 * m4 * t35 * 144.0;
         double t209 = m1 * m3 * m4 * t35 * 216.0;
@@ -212,8 +212,8 @@ __global__ void dyn(double* x1, double* x2, double* x3, double* x4,
         double t220 = sin(t213);
         double t222 = m1 * t26 * t34 * 144.0;
         double t223 = m3 * t25 * t33 * 144.0;
-        double t224 = t34 * t156;
-        double t225 = t33 * t157;
+//         double t224 = t34 * t156;
+//         double t225 = t33 * t157;
         double t226 = m4 * t26 * t35 * 162.0;
         double t227 = m2 * t26 * t34 * 216.0;
         double t228 = m2 * t28 * t33 * 216.0;
@@ -221,7 +221,7 @@ __global__ void dyn(double* x1, double* x2, double* x3, double* x4,
         double t230 = m4 * t25 * t33 * 270.0;
         double t231 = m4 * t25 * t35 * 270.0;
         double t232 = m2 * t26 * t33 * 360.0;
-        double t233 = t33 * t162;
+//         double t233 = t33 * t162;
         double t237 = m2 * m3 * m4 * t34 * 540.0;
         double t238 = m2 * m3 * m4 * t35 * 540.0;
         double t239 = m2 * m3 * m4 * t33 * 900.0;
