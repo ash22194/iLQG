@@ -83,7 +83,7 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
                 sub_policies_DDP{jj,6} = sub_policies_DDP{jj,6}(:,:,closest_start);
             end
             [X, U, c] = ForwardPassGeneral(sys_, sub_policies_DDP, starts);
-%             save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'initial_trajectories', 'p', 's', 'X', 'U', 'c');
+            save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'initial_trajectories', 'p', 's', 'X', 'U', 'c');
             return;
         end
         
@@ -179,7 +179,7 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
                  ~, ~, ~, ~, Xinit, Uinit, Cinit] = get_ilqg_trajectory_parallel(sys_, Op, starts_unique, ...
                                                             -K_, sub_policies_LQR_, sub_policies_DDP_);
                 
-%                 save(strcat(save_dir, '/', subsystem_id, '.mat'), 'X_Final', 'U_Final', 'X_DDP', 'k_DDP', 'K_DDP', 'Xinit', 'Uinit', 'Cinit', 'sys_');
+                save(strcat(save_dir, '/', subsystem_id, '.mat'), 'X_Final', 'U_Final', 'X_DDP', 'k_DDP', 'K_DDP', 'Xinit', 'Uinit', 'Cinit', 'sys_');
             end
             
             sub_policies_DDP = cat(1, sub_policies_DDP, ...
