@@ -1,6 +1,19 @@
 clear;
 close all;
 clc;
+num_gpus = gpuDeviceCount();
+gpu_id = 0;
+max_avail_memory = 0;
+for gg=3:1:num_gpus
+    g = gpuDevice(gg);
+    if (g.AvailableMemory > max_avail_memory)
+        gpu_id = gg;
+        max_avail_memory = g.AvailableMemory;
+    end
+end
+g = gpuDevice(gpu_id);
+reset(g);
+fprintf('Using GPU : %d\n', gpu_id);
 
 %% 
 
@@ -10,6 +23,7 @@ system_name = sprintf('manipulator%ddof', n);
 addpath(strcat('systems/', system_name));
 addpath('systems');
 load(strcat('data/',system_name,'System.mat'));
+mexcuda(strcat('systems/', system_name, '/dyn_mex_finite.cu'), '-R2018a', '-output', strcat('systems/', system_name, '/dyn_mex_finite')); 
 
 assert(isfield(sys, 'name') && strcmp(sys.name, system_name), 'Check loaded system!');
 
@@ -116,23 +130,21 @@ policies = cell(size(u_x,1), 1);
 value = cell(size(u_x,1), 1);
 info = cell(size(u_x,1), 1);
 
-% for dd=5:1:size(u_x,1)
-%     p = reshape(u_x(dd, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
-%     s = reshape(u_x(dd, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
+for dd=1:1:size(u_x,1)
+    p = reshape(u_x(dd, 1:(2*sys.U_DIMS)), sys.U_DIMS, 2);
+    s = reshape(u_x(dd, (1+2*sys.U_DIMS):end), sys.U_DIMS, sys.X_DIMS);
     
-%     disp(sprintf('Decomposition %d/%d', dd, size(u_x,1)));
-%     sys.decomposition_id = dd;
-% %     [policies{dd,1}, value{dd,1}, info{dd,1}] = dp_decomposition(sys, Op, p, s);
-% end
+    disp(sprintf('Decomposition %d/%d', dd, size(u_x,1)));
+    sys.decomposition_id = dd;
+    [policies{dd,1}, value{dd,1}, info{dd,1}] = dp_decomposition_gpu(sys, Op, p, s);
+end
 
-p_joint = [zeros(n,1), ones(n,1)];
-s_joint = ones(sys.U_DIMS, sys.X_DIMS);
-disp('Joint');
-sys.decomposition_id = 0;
-% profile on;
-[policies_joint, value_joint, info_joint] = dp_decomposition_gpu(sys, Op, p_joint, s_joint);
-% profile off;
-% profsave(profile('info'), 'data/manipulator3dof_joint');
+% p_joint = [zeros(n,1), ones(n,1)];
+% s_joint = ones(sys.U_DIMS, sys.X_DIMS);
+% sys.decomposition_id = 0;
+
+% disp('Joint');
+% [policies_joint, value_joint, info_joint] = dp_decomposition_gpu(sys, Op, p_joint, s_joint);
 
 % state_bounds = [repmat([-pi/3, pi/3], [n,1]);
 %                repmat([-0.5, 0.5], [n,1])];

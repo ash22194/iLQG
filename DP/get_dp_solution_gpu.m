@@ -40,8 +40,8 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
     % Initialize policy grids - fixed, free and controlled
     x = cell(X_DIMS, 1);
     u = cell(U_DIMS, 1);
-    x(X_DIMS_FIXED) = num2cell(goal(X_DIMS_FIXED));
-    u(U_DIMS_FIXED) = num2cell(zeros(length(U_DIMS_FIXED), 1));
+    x(X_DIMS_FIXED) = num2cell(gpuArray(goal(X_DIMS_FIXED)));
+    u(U_DIMS_FIXED) = num2cell(gpuArray(zeros(length(U_DIMS_FIXED), 1)));
     grid_indices = cell(length(X_DIMS_FREE), 1);
     for xxi = 1:1:length(X_DIMS_FREE)
         xx = X_DIMS_FREE(xxi);
@@ -84,6 +84,15 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
         u(U_SUBDIM) = cellfun(@(x) gpuArray(repmat(reshape(x, subpolicy_size), subpolicy_newsize)), sub_policies{jj,3}, 'UniformOutput', false);
     end
     
+    sys.active_actions = zeros(U_DIMS,1);
+    sys.active_actions(U_DIMS_FREE) = 1;
+    sys.active_actions(U_DIMS_CONTROLLED) = 1;
+    sys.active_actions = int32(sys.active_actions);
+    
+    sys.grid_size = ones(X_DIMS,1);
+    sys.grid_size(X_DIMS_FREE) = size(x{X_DIMS_FREE(1)});
+    sys.grid_size = int32(sys.grid_size);
+
     % Initialize cost functions
     % State cost assuming diagonal Q matrix
     cost_state = 0;
@@ -117,7 +126,7 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
     time_policy_update = info.time_policy_update;
     uerror_max = gpuArray(zeros(length(U_DIMS_FREE), 1));
     uerror_mean = gpuArray(zeros(length(U_DIMS_FREE), 1));
-        
+    
 %% Policy Iteration
     time_start = tic;
     while (iter < max_iter)
@@ -137,7 +146,7 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
         G = gpuArray(ones(size(G_)));
         policy_iter = 0;
         cost_action = 0;
-        x_ = dyn_finite_rk4_gpu(sys, x, u, dt);
+        x_ = dyn_finite_rk4_mex(sys, x, u, dt);
         for uui = 1:1:length(U_DIMS_FREE)
             uu = U_DIMS_FREE(uui);
             cost_action = cost_action + dt * R(uu, uu) * (u{uu} - u0(uu)).^2;
@@ -150,18 +159,19 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
             % Iterate to estimate value function
             G = G_;
             policy_iter = policy_iter + 1;
-%             Gnext = interpn_gpu(x{X_DIMS_FREE}, G_, x_{X_DIMS_FREE});
+            time_interp_start = tic;
             Gnext = feval(kernel_interp, x_{X_DIMS_FREE}, G_, kernel_inputs{:});
+            time_interp = toc(time_interp_start);
             Gnext(goal_grid{:}) = 0;
             
             % Update value function
             G_ = cost_total + gamma_*Gnext;
             G_(goal_grid{:}) = 0;
-            fprintf('Policy Iter : %d\n', policy_iter);
+%             fprintf('Policy Iter : %d, Time Interp : %.4f\n', policy_iter, time_interp);
         end
         time_policy_eval_curr = toc(time_policy_eval_start);
         time_policy_eval = time_policy_eval + time_policy_eval_curr;
-        clear 'G';
+        clear 'G' 'cost_total' 'cost_action';
 
         % Update policy
         % Compute Q(x,u) values g(x,u) + G(x+udt) for different actions when value
@@ -179,23 +189,26 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
                 cost_action_ = cost_action_ + dt * R(uu, uu) * (u_{uu} - u0(uu)).^2;
             end
             
-            x__ = dyn_finite_rk4_gpu(sys, x, u_, dt);
+            time_dyn_start = tic;
+            x__ = dyn_finite_rk4_mex(sys, x, u_, dt);
+            time_dyn = toc(time_dyn_start);
             
-%             Gnext_ = interpn_gpu(x{X_DIMS_FREE}, G_, x__{X_DIMS_FREE});
+            time_interp_start = tic;
             Gnext_ = feval(kernel_interp, x__{X_DIMS_FREE}, G_, kernel_inputs{:});
+            time_interp = toc(time_interp_start);
             Gnext_(goal_grid{:}) = 0;
-            Gaction = cost_fixed + cost_action_ + gamma_*Gnext_;
-            Gaction(goal_grid{:}) = 0;
+            Gnext_ = cost_fixed + cost_action_ + gamma_*Gnext_;
+            Gnext_(goal_grid{:}) = 0;
             
-            actionUpdate = Gaction < minG;
+            actionUpdate = Gnext_ < minG;
             actionUpdateBar = ~actionUpdate;
-            minG = (Gaction .* actionUpdate) + (minG .* actionUpdateBar);
+            minG = (Gnext_ .* actionUpdate) + (minG .* actionUpdateBar);
             for uui = 1:1:length(U_DIMS_FREE)
                 uu = U_DIMS_FREE(uui);
                 unew{uu} = (u_{uu} .* actionUpdate) + (unew{uu} .* actionUpdateBar);
                 unew{uu}(goal_grid{:}) = u0(uu);
             end
-            fprintf('Policy Update : %d\n', i);
+%             fprintf('Policy Update : %d, Time Interp : %.4f, Time Dyn : %.4f\n', i, time_interp, time_dyn);
         end
         
         for uui = 1:1:length(U_DIMS_FREE)
@@ -207,7 +220,7 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
         u = unew;
         time_policy_update_curr = toc(time_policy_update_start);
         time_policy_update = time_policy_update + time_policy_update_curr;
-        clear 'x__' 'u_' 'minG' 'cost_action_' 'Gnext_' 'Gaction' 'actionUpdate' 'actionUpdateBar' 'unew';
+        clear 'x__' 'u_' 'minG' 'cost_action_' 'Gnext_' 'actionUpdate' 'actionUpdateBar' 'unew';
         
         if (all(uerror_max < u_max_tol(U_DIMS_FREE)) ...
             && all(uerror_mean < u_mean_tol(U_DIMS_FREE)))
@@ -246,7 +259,7 @@ function [k, inputs] = generate_interp_kernel(varargin)
 n = nargin;
 grid_sizes = cell2mat(cellfun(@(x) size(x), varargin(:), 'UniformOutput', false));
 size_compare = ones(n ,1) * grid_sizes(1,:) == grid_sizes;
-assert(all(size_compare), "All xi must have the same dimensions");
+assert(all(size_compare, 'all'), "All xi must have the same dimensions");
 
 Nx = grid_sizes(1,:)';
 x1 = cellfun(@(y) y(1), varargin(:)); % Min value in each dimension
@@ -266,8 +279,7 @@ corners_index = sub2ind(Nx, cb{:}) - 1;
 Nx = num2cell(Nx(1:n));
 x1 = num2cell(x1);
 dx = num2cell(dx);
-corners_index = num2cell(corners_index(:));
-inputs = cat(1, Nx, dx, x1, corners_index);
+inputs = cat(1, Nx, dx, x1, {corners_index});
 
 nlinear = sprintf('calc_average%d',n);
 k = parallel.gpu.CUDAKernel(strcat('cuda/', nlinear, '.ptx'), ...

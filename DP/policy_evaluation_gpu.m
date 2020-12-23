@@ -79,6 +79,7 @@ function [value, info] = policy_evaluation_gpu(sys, Op, sub_policies)
     G_ = gpuArray(zeros(num_points(X_DIMS_FREE)));
     G = gpuArray(ones(size(G_)));
     
+    [kernel_interp, kernel_inputs] = generate_interp_kernel(x{X_DIMS_FREE});
     policy_iter = 0;
     time_total = 0;
     
@@ -87,9 +88,8 @@ function [value, info] = policy_evaluation_gpu(sys, Op, sub_policies)
     while ((max(abs(G_ - G), [], 'all') > gtol) && (policy_iter < max_iter))
         % Iterate to estimate value function
         policy_iter = policy_iter + 1;
-        disp(sprintf('Policy Iter : %d', policy_iter));
         G = G_;
-        Gnext = interpn_gpu(x{X_DIMS_FREE}, G_, x_{X_DIMS_FREE});
+        Gnext = feval(kernel_interp, x_{X_DIMS_FREE}, G_, kernel_inputs{:});
         Gnext(goal_grid{:}) = 0;
 
         % Update value function
@@ -102,4 +102,40 @@ function [value, info] = policy_evaluation_gpu(sys, Op, sub_policies)
     info.state_grid = x(X_DIMS_FREE);
     info.policy_iter = policy_iter;
     info.time_total = time_total;
+end
+
+function [k, inputs] = generate_interp_kernel(varargin)
+% x1, ..., xn generated from ndgrid
+
+n = nargin;
+grid_sizes = cell2mat(cellfun(@(x) size(x), varargin(:), 'UniformOutput', false));
+size_compare = ones(n ,1) * grid_sizes(1,:) == grid_sizes;
+assert(all(size_compare, 'all'), "All xi must have the same dimensions");
+
+Nx = grid_sizes(1,:)';
+x1 = cellfun(@(y) y(1), varargin(:)); % Min value in each dimension
+dx = cellfun(@(y) y(end) - y(1), varargin(:)) ./ (Nx(1:n) - 1); % Discretizatio in each dimension
+
+% Generate corners of the n dimensional hyper-cube
+corners = 0:1:(2^n - 1);
+cb = zeros(n, 2^n);
+for ii=1:1:n
+    r = floor(corners / 2);
+    cb(ii, :) = corners - 2*r;
+    corners = r;
+end
+cb = num2cell(flip(cb + 1, 1), 2);
+corners_index = sub2ind(Nx, cb{:}) - 1;
+
+Nx = num2cell(Nx(1:n));
+x1 = num2cell(x1);
+dx = num2cell(dx);
+inputs = cat(1, Nx, dx, x1, {corners_index});
+
+nlinear = sprintf('calc_average%d',n);
+k = parallel.gpu.CUDAKernel(strcat('cuda/', nlinear, '.ptx'), ...
+                            strcat('cuda/', nlinear, '.cu'), ...
+                            nlinear);
+k.ThreadBlockSize = 896;
+k.GridSize = 1024;
 end
