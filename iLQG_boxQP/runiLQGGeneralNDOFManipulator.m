@@ -5,9 +5,9 @@ clc;
 %%
 
 restoredefaultpath;
-n = 2;
+n = 4;
 system_name = sprintf('manipulator%ddof', n);
-save_dir = '/pylon5/cis200015p/akhadke/iLQG/iLQG_boxQP/data';
+save_dir = 'data/multitraj';
 addpath('general');
 addpath(strcat('new_systems/', system_name));
 load(strcat('new_systems/', system_name, '/sys.mat'), 'sys');
@@ -15,19 +15,13 @@ load(strcat('new_systems/', system_name, '/sys.mat'), 'sys');
 sys.X_DIMS = 2*sys.n; % [thi, ... dthi, ...]
 sys.U_DIMS = sys.n;   % [taui]
 if (n==2)
-%     sys.m = [0.5; 0.1]; % kg
-%     sys.l = [0.25; 0.125]; % m
     sys.m = [2.5; 0.5]/2; % kg
-    sys.l = [0.5; 0.25]; % m
+    sys.l = [0.5; 0.25]/2; % m
     Izz = sys.m.*((sys.l));
-%     sys.Q = diag([8, 8, 0.5, 0.5])/5;
     sys.Q = diag([8, 8, 0.6, 0.6])/5;
     sys.R = diag(0.003*(Izz(1)./Izz).^2);
-%     sys.R = diag([0.003, 0.003]);
-%     sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
-%     sys.lims = 15*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
-    sys.lims = 15*[-1, 1; -1/3, 1/3]; % action limits
-
+    sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
+    
     % Define decompositions to test
     u_x = [];
     
@@ -66,42 +60,28 @@ if (n==2)
     u_x = [u_x; reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
     
 elseif (n==3)
-    % The best so far
     sys.m = [2.5; 0.5; 0.1] * 1.1; % kg
     sys.l = [0.5; 0.25; 0.125]; % m
     Izz = sys.m.*((sys.l));
     sys.Q = diag([8*ones(1,3), 0.6*ones(1,3)])/5;
-%     sys.R = diag(0.004*(Izz(2)./Izz).^2);
-%     sys.R = diag([0.002; 0.004*(Izz(2)./Izz(2:3)).^2]);
     sys.R = diag(0.004*(Izz(1)./Izz));
     sys.lims = [-16, 16; -7.5, 7.5; -1, 1]; % action limits
-%     sys.m = [2.5; 0.5; 0.125]; % kg
-%     sys.l = [0.5; 0.25; 0.125]; % m
-%     Izz = sys.m.*((sys.l));
-%     sys.Q = diag([8*ones(1,3), 0.5*ones(1,3)])/5;
-%     sys.R = diag(0.002*(Izz(1)./Izz).^2);
-%     sys.lims = 24*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
-
+    
     % Define decompositions to test
-    p = [linspace(0,n-1,n)', ones(n,1)];
-    s = repmat(eye(n), [1, 2]);
-    u_x = [reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
+    load('data/manipulator3dof/manipulator3dof_paretofront.mat');
+    u_x = u_xp;
 
 elseif (n==4)
     sys.m = [5.4; 1.8; 0.6; 0.2]; % kg
     sys.l = [0.2; 0.5; 0.25; 0.125]; % m
     Izz = sys.m.*((sys.l));
     sys.Q = diag([8*ones(1,4), 0.2*ones(1,4)])/2;
-%     sys.R = diag(0.004*(Izz(1)./Izz));
-    sys.R = diag([0.004; 0.004*(Izz(2)./Izz(2:end))]);
-    sys.lims = [-inf, inf; -15, 15; -7.5, 7.5; -1, 1]; % action limits
-%     sys.lims = inf*[-ones(4,1), ones(4,1)];
+    sys.R = diag([0.002; 0.004*(Izz(2)./Izz(2:end))]);
+    sys.lims = [-24, 24; -15, 15; -7.5, 7.5; -1, 1]; % action limits
 
     % Define decompositions to test
-    p = [linspace(0,n-1,n)', ones(n,1)];
-    s = repmat(eye(n), [1, 2]);
-    u_x = [reshape(p, 1, 2*sys.U_DIMS), reshape(s, 1, sys.U_DIMS*sys.X_DIMS)];
-
+    load('data/manipulator4dof/manipulator4dof_paretofront.mat');
+    u_x = u_xp;
 end
 sys.g = 9.81; % m/s^2
 sys.T = 4;
@@ -145,8 +125,8 @@ for count = 1:1:size(starts,2)
     end
 end
 
-% starts = starts(:, [1, round(size(starts, 2)/2), round(3*size(starts, 2)/4), end]);
-% u_x = u_x([5],:);
+% starts = starts(:, [5,6]);
+% u_x = u_x([6],:);
 
 poolobj = gcp('nocreate');
 delete(poolobj);
@@ -176,4 +156,4 @@ sys.decomposition_id = 0;
 
 err_ddp = mean(abs(reshape(cd, size(starts, 2), size(u_x, 1)) - cjoint'), 1);
 
-% save(strcat(save_dir, '/', system_name, '/summary.mat'), 'sys', 'u_x', 'Xd', 'Ud', 'cd', 'Xjoint', 'Ujoint', 'cjoint', 'err_ddp');
+save(strcat(save_dir, '/', system_name, '/summary.mat'), 'sys', 'u_x', 'Xd', 'Ud', 'cd', 'Xjoint', 'Ujoint', 'cjoint', 'err_ddp');
