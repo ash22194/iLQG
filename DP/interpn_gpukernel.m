@@ -33,10 +33,11 @@ cb = num2cell(flip(cb + 1,1), 2);
 corners_index = sub2ind(Nx, cb{:}) - 1;
 
 x1 = num2cell(x1(:));
+grid_size = prod(size(xi{1}));
 Nx = Nx(1:n);
 Nx = num2cell(Nx(:));
 dx = num2cell(dx(:));
 
-out = feval(k, xi{:}, V, Nx{:}, dx{:}, x1{:}, corners_index);
+out = feval(k, xi{:}, V, grid_size, Nx{:}, dx{:}, x1{:}, corners_index);
 
 end

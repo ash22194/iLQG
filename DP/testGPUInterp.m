@@ -20,12 +20,13 @@ for xxi = 1:1:num_dims
 end
 [grid{:}] = ndgrid(grid_indices{:});
 
-num_iter = 5;
+num_iter = 7;
 query = cell(num_iter, 1);
 for jj=1:1:num_iter
     query{jj} = cell(num_dims, 1);
     for xxi=1:1:num_dims
-        query{jj}{xxi} = rand(size(values));
+%         query{jj}{xxi} = rand(size(values));
+        query{jj}{xxi} = rand();
     end
 end
 
@@ -81,6 +82,7 @@ end
 cb = num2cell(flip(cb + 1,1), 2);
 corners_index = sub2ind(Nx, cb{:}) - 1;
 x1 = num2cell(x1(:));
+grid_size = prod(size(query{1}{1}));
 Nx = Nx(1:num_dims);
 Nx = num2cell(Nx(:));
 dx = num2cell(dx(:));
@@ -88,7 +90,7 @@ dx = num2cell(dx(:));
 time_feval = zeros(num_iter, 1);
 for ii=1:1:num_iter
     tic;
-    grid_query_custom_kernel = feval(k, query{ii}{:}, values, Nx{:}, dx{:}, x1{:}, corners_index);
+    grid_query_custom_kernel = feval(k, query{ii}{:}, values, grid_size, Nx{:}, dx{:}, x1{:}, corners_index);
     time_feval(ii) = toc;
 end
 time_custom_kernel = sum(time_feval);

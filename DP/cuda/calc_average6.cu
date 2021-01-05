@@ -1,5 +1,5 @@
 __global__ void calc_average6(double* Xi1, const double* Xi2, const double* Xi3, 
-                              const double* Xi4, const double* Xi5, const double* Xi6, const double* V,
+                              const double* Xi4, const double* Xi5, const double* Xi6, const double* V, const int query_grid_size,
                               const int Nx1, const int Nx2, const int Nx3, 
                               const int Nx4, const int Nx5, const int Nx6,
                               const double dx1, const double dx2, const double dx3, 
@@ -11,11 +11,11 @@ __global__ void calc_average6(double* Xi1, const double* Xi2, const double* Xi3,
         + (threadIdx.x + threadIdx.y * blockDim.x);
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
 
-    int grid_size = Nx1 * Nx2 * Nx3 * Nx4 * Nx5 * Nx6;
+//     int query_grid_size = Nx1 * Nx2 * Nx3 * Nx4 * Nx5 * Nx6;
     int loc1, loc2, loc3, loc4, loc5, loc6, scalar_loc;
     double xi2, xi3, xi4, xi5, xi6;
 
-    while (index < grid_size)
+    while (index < query_grid_size)
     {
         Xi1[index] = (Xi1[index] - minx1) / dx1;
         xi2 = (Xi2[index] - minx2) / dx2;

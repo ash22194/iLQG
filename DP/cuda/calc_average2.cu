@@ -1,13 +1,13 @@
-__global__ void calc_average2(double * Xi1, const double * Xi2, const double * V, const int Nx1, const int Nx2, const double dx1, const double dx2, const double minx1, const double minx2, const int * corners_index)
+__global__ void calc_average2(double * Xi1, const double * Xi2, const double * V, const int query_grid_size, const int Nx1, const int Nx2, const double dx1, const double dx2, const double minx1, const double minx2, const int * corners_index)
 {
     int index = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x * blockDim.y
                 + (threadIdx.x + threadIdx.y * blockDim.x);
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
-    int grid_size = Nx1 * Nx2;
+//     int query_grid_size = Nx1 * Nx2;
     int loc1, loc2, scalar_loc;
     double xi2;
 
-    while (index < grid_size)
+    while (index < query_grid_size)
     {
         Xi1[index] = (Xi1[index] - minx1) / dx1;
         xi2        = (Xi2[index] - minx2) / dx2;

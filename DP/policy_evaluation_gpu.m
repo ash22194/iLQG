@@ -127,10 +127,11 @@ end
 cb = num2cell(flip(cb + 1, 1), 2);
 corners_index = sub2ind(Nx, cb{:}) - 1;
 
+grid_size = prod(Nx(1:n));
 Nx = num2cell(Nx(1:n));
 x1 = num2cell(x1);
 dx = num2cell(dx);
-inputs = cat(1, Nx, dx, x1, {corners_index});
+inputs = cat(1, {grid_size}, Nx, dx, x1, {corners_index});
 
 nlinear = sprintf('calc_average%d',n);
 k = parallel.gpu.CUDAKernel(strcat('cuda/', nlinear, '.ptx'), ...
