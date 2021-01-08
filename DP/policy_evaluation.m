@@ -82,12 +82,13 @@ function [value, info] = policy_evaluation(sys, Op, sub_policies)
     policy_iter = 0;
     time_total = 0;
     
-    tic;
+    time_start = tic;
     x_ = dyn_finite_rk4(sys, x, u, dt); % Next state after a step
     while ((max(abs(G_ - G), [], 'all') > gtol) && (policy_iter < max_iter))
         % Iterate to estimate value function
+        tic;
         policy_iter = policy_iter + 1;
-        disp(sprintf('Policy Iter : %d', policy_iter));
+
         G = G_;
         Gnext = F(x_{X_DIMS_FREE});
         Gnext(goal_grid{:}) = 0;
@@ -97,9 +98,10 @@ function [value, info] = policy_evaluation(sys, Op, sub_policies)
         G_(goal_grid{:}) = 0;
         F.Values = G_;
         
-        disp(strcat('Policy evaluation iter :', num2str(policy_iter)));
+        time_iter = toc;
+%         disp(strcat('Policy evaluation iter :', num2str(policy_iter), ', time : ', num2str(time_iter)));
     end
-    time_total = toc;
+    time_total = toc(time_start);
     
     value = G_;
     info.state_grid = x(X_DIMS_FREE);

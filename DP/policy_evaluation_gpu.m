@@ -23,7 +23,7 @@ function [value, info] = policy_evaluation_gpu(sys, Op, sub_policies)
 %% Initialize 
     % Create state grids
     x = cell(X_DIMS, 1);
-    x(X_DIMS_FIXED) = num2cell(goal(X_DIMS_FIXED));
+    x(X_DIMS_FIXED) = num2cell(gpuArray(goal(X_DIMS_FIXED)));
     grid_indices = cell(length(X_DIMS_FREE), 1);
     for xxi = 1:1:length(X_DIMS_FREE)
         xx = X_DIMS_FREE(xxi);
@@ -50,8 +50,17 @@ function [value, info] = policy_evaluation_gpu(sys, Op, sub_policies)
         subpolicy_newsize = num_points(X_DIMS_FREE);
         subpolicy_newsize(X_SUBDIM) = 1;
         
-        u(U_SUBDIM) = cellfun(@(x) repmat(reshape(x, subpolicy_size), subpolicy_newsize), sub_policies{jj,3}, 'UniformOutput', false);
+        u(U_SUBDIM) = cellfun(@(x) gpuArray(repmat(reshape(x, subpolicy_size), subpolicy_newsize)), sub_policies{jj,3}, 'UniformOutput', false);
     end
+    
+    sys.active_actions = zeros(U_DIMS,1);
+    sys.active_actions(U_DIMS_FREE) = 1;
+    sys.active_actions(U_DIMS_CONTROLLED) = 1;
+    sys.active_actions = int32(sys.active_actions);
+    
+    sys.grid_size = ones(X_DIMS,1);
+    sys.grid_size(X_DIMS_FREE) = size(x{X_DIMS_FREE(1)});
+    sys.grid_size = int32(sys.grid_size);
     
     % Initialize cost functions
     % State cost assuming diagonal Q matrix
@@ -83,10 +92,11 @@ function [value, info] = policy_evaluation_gpu(sys, Op, sub_policies)
     policy_iter = 0;
     time_total = 0;
     
-    tic;
-    x_ = dyn_finite_rk4_gpu(sys, x, u, dt); % Next state after a step
+    time_start = tic;
+    x_ = dyn_finite_rk4_mex(sys, x, u, dt); % Next state after a step
     while ((max(abs(G_ - G), [], 'all') > gtol) && (policy_iter < max_iter))
         % Iterate to estimate value function
+        tic;
         policy_iter = policy_iter + 1;
         G = G_;
         Gnext = feval(kernel_interp, x_{X_DIMS_FREE}, G_, kernel_inputs{:});
@@ -95,8 +105,11 @@ function [value, info] = policy_evaluation_gpu(sys, Op, sub_policies)
         % Update value function
         G_ = cost_total + gamma_*Gnext;
         G_(goal_grid{:}) = 0;
+        
+        time_iter = toc;
+%         disp(strcat('Policy evaluation iter :', num2str(policy_iter), ', time : ', num2str(time_iter)));
     end
-    time_total = toc;
+    time_total = toc(time_start);
     
     value = G_;
     info.state_grid = x(X_DIMS_FREE);
