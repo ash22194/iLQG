@@ -16,19 +16,19 @@ l4 = sys.l(4);
 g = sys.g;
 X_DIMS_FREE = sys.X_DIMS_FREE; % Assuming they are sorted
 
-th1 = x(1,:);
-th2 = x(2,:);
-th3 = x(3,:);
-th4 = x(4,:);
-dth1 = x(5,:);
-dth2 = x(6,:);
-dth3 = x(7,:);
-dth4 = x(8,:);
+th1 = x{1};
+th2 = x{2};
+th3 = x{3};
+th4 = x{4};
+dth1 = x{5};
+dth2 = x{6};
+dth3 = x{7};
+dth4 = x{8};
 
-u1 = u(1,:);
-u2 = u(2,:);
-u3 = u(3,:);
-u4 = u(4,:);
+u1 = u{1};
+u2 = u{2};
+u3 = u{3};
+u4 = u{4};
 
 t2 = cos(th1);
 t3 = cos(th2);

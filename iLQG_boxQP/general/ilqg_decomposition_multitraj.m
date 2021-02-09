@@ -65,16 +65,28 @@ function [X, U, c] = ilqg_decomposition_multitraj(sys, Op, p, s, starts)
         leaf_nodes = action_tree(leaf_node_ids, :);
     
         if (size(leaf_nodes, 1)==1 && all(leaf_nodes{1,1}==0))
-            % Compute the final trajectories
-            sys_ = sys;
-            sys_.X_DIMS_FREE = linspace(1, sys_.X_DIMS, sys_.X_DIMS)';
-            sys_.X_DIMS_FIXED = [];
-            sys_.U_DIMS_FREE = [];
-            sys_.U_DIMS_CONTROLLED = linspace(1, sys_.U_DIMS, sys_.U_DIMS)';
-            sys_.U_DIMS_FIXED = [];
-            sub_policies_DDP = leaf_nodes{1, 4};
-            [X, U, c] = ForwardPassGeneral_multitraj(sys_, sub_policies_DDP, starts);
-            save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'initial_trajectories', 'p', 's', 'X', 'U', 'c');
+            load_successful = false;
+            if (isfield(Op, 'reuse_policy') && Op.reuse_policy && isfile(strcat(save_dir, '/final.mat')))
+                prev_save = load(strcat(save_dir, '/final.mat'), 'p', 's', 'X', 'U', 'c');
+                if (all(prev_save.p==p, 'all') && all(prev_save.s==s, 'all'))
+                    load_successful = true;
+                    X = prev_save.X;
+                    U = prev_save.U;
+                    c = prev_save.c;
+                end
+            end
+            if (~load_successful)
+                % Compute the final trajectories
+                sys_ = sys;
+                sys_.X_DIMS_FREE = linspace(1, sys_.X_DIMS, sys_.X_DIMS)';
+                sys_.X_DIMS_FIXED = [];
+                sys_.U_DIMS_FREE = [];
+                sys_.U_DIMS_CONTROLLED = linspace(1, sys_.U_DIMS, sys_.U_DIMS)';
+                sys_.U_DIMS_FIXED = [];
+                sub_policies_DDP = leaf_nodes{1, 4};
+                [X, U, c] = ForwardPassGeneral_multitraj(sys_, sub_policies_DDP, starts);
+                save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'initial_trajectories', 'p', 's', 'X', 'U', 'c');
+            end
             return;
         end
         

@@ -65,25 +65,37 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
         leaf_nodes = action_tree(leaf_node_ids, :);
     
         if (size(leaf_nodes, 1)==1 && all(leaf_nodes{1,1}==0))
-            % Compute the final trajectories
-            sys_ = sys;
-            sys_.X_DIMS_FREE = linspace(1, sys_.X_DIMS, sys_.X_DIMS)';
-            sys_.X_DIMS_FIXED = [];
-            sys_.U_DIMS_FREE = [];
-            sys_.U_DIMS_CONTROLLED = linspace(1, sys_.U_DIMS, sys_.U_DIMS)';
-            sys_.U_DIMS_FIXED = [];
-            sub_policies_DDP = leaf_nodes{1, 4};
-            for jj=1:1:size(sub_policies_DDP,1)
-                start_dist = pdist2(starts(sub_policies_DDP{jj,2},:)', reshape(sub_policies_DDP{jj,6}(:,1,:), size(sub_policies_DDP{jj,6}, 1), size(sub_policies_DDP{jj,6}, 3))');
-                [~, closest_start] = min(start_dist, [], 2);
-                
-                sub_policies_DDP{jj,3} = sub_policies_DDP{jj,3}(:,:,closest_start);
-                sub_policies_DDP{jj,4} = sub_policies_DDP{jj,4}(:,:,:,closest_start);
-                sub_policies_DDP{jj,5} = sub_policies_DDP{jj,5}(:,:,closest_start);
-                sub_policies_DDP{jj,6} = sub_policies_DDP{jj,6}(:,:,closest_start);
+            load_successful = false;
+            if (isfield(Op, 'reuse_policy') && Op.reuse_policy && isfile(strcat(save_dir, '/final.mat')))
+                prev_save = load(strcat(save_dir, '/final.mat'), 'p', 's', 'X', 'U', 'c');
+                if (all(prev_save.p==p, 'all') && all(prev_save.s==s, 'all'))
+                    load_successful = true;
+                    X = prev_save.X;
+                    U = prev_save.U;
+                    c = prev_save.c;
+                end
             end
-            [X, U, c] = ForwardPassGeneral(sys_, sub_policies_DDP, starts);
-%             save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'initial_trajectories', 'p', 's', 'X', 'U', 'c');
+            if (~load_successful)
+                % Compute the final trajectories
+                sys_ = sys;
+                sys_.X_DIMS_FREE = linspace(1, sys_.X_DIMS, sys_.X_DIMS)';
+                sys_.X_DIMS_FIXED = [];
+                sys_.U_DIMS_FREE = [];
+                sys_.U_DIMS_CONTROLLED = linspace(1, sys_.U_DIMS, sys_.U_DIMS)';
+                sys_.U_DIMS_FIXED = [];
+                sub_policies_DDP = leaf_nodes{1, 4};
+                for jj=1:1:size(sub_policies_DDP,1)
+                    start_dist = pdist2(starts(sub_policies_DDP{jj,2},:)', reshape(sub_policies_DDP{jj,6}(:,1,:), size(sub_policies_DDP{jj,6}, 1), size(sub_policies_DDP{jj,6}, 3))');
+                    [~, closest_start] = min(start_dist, [], 2);
+
+                    sub_policies_DDP{jj,3} = sub_policies_DDP{jj,3}(:,:,closest_start);
+                    sub_policies_DDP{jj,4} = sub_policies_DDP{jj,4}(:,:,:,closest_start);
+                    sub_policies_DDP{jj,5} = sub_policies_DDP{jj,5}(:,:,closest_start);
+                    sub_policies_DDP{jj,6} = sub_policies_DDP{jj,6}(:,:,closest_start);
+                end
+                [X, U, c] = ForwardPassGeneral(sys_, sub_policies_DDP, starts);
+                save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'initial_trajectories', 'p', 's', 'X', 'U', 'c');
+            end
             return;
         end
         
@@ -179,7 +191,7 @@ function [X, U, c] = ilqg_decomposition(sys, Op, p, s, starts)
                  ~, ~, ~, ~, Xinit, Uinit, Cinit] = get_ilqg_trajectory_parallel(sys_, Op, starts_unique, ...
                                                             -K_, sub_policies_LQR_, sub_policies_DDP_);
                 
-%                 save(strcat(save_dir, '/', subsystem_id, '.mat'), 'X_Final', 'U_Final', 'X_DDP', 'k_DDP', 'K_DDP', 'Xinit', 'Uinit', 'Cinit', 'sys_');
+                save(strcat(save_dir, '/', subsystem_id, '.mat'), 'X_Final', 'U_Final', 'X_DDP', 'k_DDP', 'K_DDP', 'Xinit', 'Uinit', 'Cinit', 'sys_');
             end
             
             sub_policies_DDP = cat(1, sub_policies_DDP, ...

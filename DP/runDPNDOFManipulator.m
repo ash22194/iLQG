@@ -1,15 +1,29 @@
 clear;
 close all;
 clc;
+num_gpus = gpuDeviceCount();
+gpu_id = 0;
+max_avail_memory = 0;
+for gg=3:1:num_gpus
+    g = gpuDevice(gg);
+    if (g.AvailableMemory > max_avail_memory)
+        gpu_id = gg;
+        max_avail_memory = g.AvailableMemory;
+    end
+end
+g = gpuDevice(gpu_id);
+reset(g);
+fprintf('Using GPU : %d\n', gpu_id);
 
 %% 
 
 restoredefaultpath;
-n = 3;
+n = 4;
 system_name = sprintf('manipulator%ddof', n);
 addpath(strcat('systems/', system_name));
 addpath('systems');
 load(strcat('data/',system_name,'System.mat'));
+mexcuda(strcat('systems/', system_name, '/dyn_mex_finite.cu'), '-R2018a', '-output', strcat('systems/', system_name, '/dyn_mex_finite')); 
 
 assert(isfield(sys, 'name') && strcmp(sys.name, system_name), 'Check loaded system!');
 
@@ -89,8 +103,8 @@ elseif (n==4)
     sys.limits = [pi/2, 3*pi/2; repmat([-pi/2, pi/2], n-1, 1); repmat([-1.5, 1.5], n, 1)];
     sys.lims = [-24, 24; -15, 15; -7.5, 7.5; -1, 1]; % action limits
     
-    Op.num_points = [9, 9, 9, 9, 7, 7, 7, 7];
-    Op.num_action_samples = [12, 7, 3, 2];
+    Op.num_points = [9,9,9,9,7,7,7,7];
+    Op.num_action_samples = [6,4,3,2];
     
     % Define decompositions to test
     load('data/manipulator4dof/manipulator4dof_paretofront.mat');
@@ -110,7 +124,7 @@ Op.gtol = 1e-5;
 Op.u_mean_tol = (sys.lims(:,2) - sys.lims(:,1)) * 2e-6;
 Op.u_max_tol = (sys.lims(:,2) - sys.lims(:,1)) / 12;
 Op.save_dir = 'data';
-Op.reuse_policy = true;
+Op.reuse_policy = false;
 
 policies = cell(size(u_x,1), 1);
 value = cell(size(u_x,1), 1);
@@ -122,27 +136,28 @@ for dd=1:1:size(u_x,1)
     
     disp(sprintf('Decomposition %d/%d', dd, size(u_x,1)));
     sys.decomposition_id = dd;
-    [policies{dd,1}, value{dd,1}, info{dd,1}] = dp_decomposition(sys, Op, p, s);
+    [policies{dd,1}, value{dd,1}, info{dd,1}] = dp_decomposition_gpu(sys, Op, p, s);
 end
 
-p_joint = [zeros(n,1), ones(n,1)];
-s_joint = ones(sys.U_DIMS, sys.X_DIMS);
-disp('Joint');
-sys.decomposition_id = 0;
-[policies_joint, value_joint, info_joint] = dp_decomposition(sys, Op, p_joint, s_joint);
+% p_joint = [zeros(n,1), ones(n,1)];
+% s_joint = ones(sys.U_DIMS, sys.X_DIMS);
+% sys.decomposition_id = 0;
 
-state_bounds = [repmat([-pi/3, pi/3], [n,1]);
-               repmat([-0.5, 0.5], [n,1])];
-state_bounds(1,:) = state_bounds(1,:) + pi;
-state_bounds = mat2cell(state_bounds, ones(2*n,1), 2);
+% disp('Joint');
+% [policies_joint, value_joint, info_joint] = dp_decomposition_gpu(sys, Op, p_joint, s_joint);
 
-valid_range = cellfun(@(x,y) (x>y(1)) & (x<y(2)), info_joint.state_grid, state_bounds, 'UniformOutput', false);
-valid_range = permute(reshape(permute(cell2mat(valid_range), [linspace(2, 2*n, 2*n-1), 1]), [Op.num_points, 2*n]), [2*n, linspace(1,2*n-1,2*n-1), 2*n+1]);
-valid_range = logical(prod(valid_range, 2*n+1));
+% state_bounds = [repmat([-pi/3, pi/3], [n,1]);
+%                repmat([-0.5, 0.5], [n,1])];
+% state_bounds(1,:) = state_bounds(1,:) + pi;
+% state_bounds = mat2cell(state_bounds, ones(2*n,1), 2);
 
-err_dp = zeros(1, size(u_x,1));
-for dd=1:1:size(u_x,1)
-    err_dp(dd) = mean(abs(value{dd,1}(valid_range) - value_joint(valid_range)), 'all');
-end
+% valid_range = cellfun(@(x,y) (x>y(1)) & (x<y(2)), info_joint.state_grid, state_bounds, 'UniformOutput', false);
+% valid_range = permute(reshape(permute(cell2mat(valid_range), [linspace(2, 2*n, 2*n-1), 1]), [Op.num_points, 2*n]), [2*n, linspace(1,2*n-1,2*n-1), 2*n+1]);
+% valid_range = logical(prod(valid_range, 2*n+1));
 
-save(strcat(Op.save_dir, '/', system_name, '/summary.mat'), 'u_x', 'policies', 'value', 'info', 'policies_joint', 'value_joint', 'info_joint', 'err_dp', 'sys', 'Op', '-v7.3', '-nocompression');
+% err_dp = zeros(1, size(u_x,1));
+% for dd=1:1:size(u_x,1)
+%     err_dp(dd) = mean(abs(value{dd,1}(valid_range) - value_joint(valid_range)), 'all');
+% end
+
+% save(strcat(Op.save_dir, '/', system_name, '/summary.mat'), 'u_x', 'policies', 'value', 'info', 'policies_joint', 'value_joint', 'info_joint', 'err_dp', 'sys', 'Op');

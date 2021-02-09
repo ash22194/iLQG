@@ -5,7 +5,7 @@ clc;
 %% 
 
 restoredefaultpath;
-n = 2;
+n = 3;
 system_name = sprintf('manipulator%ddof', n);
 addpath(strcat('../iLQG_boxQP/new_systems/', system_name));
 addpath(genpath('test'));
@@ -20,7 +20,6 @@ if (n==2)
     sys.Q = diag([8, 8, 0.6, 0.6])/5;
     sys.R = diag(0.003*(Izz(1)./Izz).^2);
     sys.lims = 5*[-Izz/Izz(1), Izz/Izz(1)]; % action limits
-    
     sys.num_points = 31 * ones(1, sys.X_DIMS);
     sys.num_action_samples = [15, 5];
     
