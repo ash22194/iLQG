@@ -20,6 +20,13 @@ classdef policy_decomposition_wrep < handle
     methods 
         
         function de = policy_decomposition_wrep(varargin)
+            %% Description
+            % Each node stores a list of child nodes that are objects of
+            % type policy_decomposition_wrep when expanded and string
+            % encodings when unexpanded.
+            % Copies of expanded nodes are stored in a dictionary with string
+            % encodings as keys
+            
             % Constructor
             sys = varargin{1};
             if (~isfield(sys, 'fxfu_func'))

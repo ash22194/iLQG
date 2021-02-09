@@ -45,6 +45,16 @@ tic;
 run_mcts(mctree3, max_mcts_iter, max_mcts_time, deterministic);
 time_mcts3 = toc;
 
+%% Alg 4)
+
+mctree4 = policy_decomposition_leafexpand(sys, ...
+                                          [zeros(sys.U_DIMS,1), ones(sys.U_DIMS,1)], ...
+                                          ones(sys.U_DIMS, sys.X_DIMS), ...
+                                          {});
+tic;
+run_mcts(mctree4, max_mcts_iter, max_mcts_time, deterministic);
+time_mcts4 = toc;
+
 %% Extract Promissing Decompositions
 num_to_extract = 10;
 
@@ -172,7 +182,49 @@ assert(all(abs(cellfun(@(x) x.measure, best_children3)...
                - sys.measure_func(best_children_lqr_measure3, best_children_compute_fraction3))...
             < eps), 'Check measure3 calculation!');
 
+% Alg 4
+root = mctree4;
+
+children = root.childnodes(cellfun(@(x) isa(x, class(root)), root.childnodes));
+children_measure = cellfun(@(x) x.measure, children);
+[~, children_measure_order] = sort(children_measure);
+children = children(children_measure_order, :);
+
+num_extracted = 0;
+best_children4 = cell(0, 1);
+while (num_extracted < num_to_extract && ~isempty(children))
+    best_children4 = cat(1, best_children4, children(1,:));
+    while (abs(best_children4{end, 1}.measure ...
+               - sys.measure_func(best_children4{end, 1}.lqr_measure, ...
+                                  best_children4{end, 1}.compute_fraction)) > eps)
+         best_children4{end, 1} = best_children4{end, 1}.childnode_best;
+    end
+    assert(best_children4{end, 1}.measure == children{1, 1}.measure, 'Check the best child lookup');
+    
+    if (any(cellfun(@(x) strcmp(x.decomposition_key, ...
+                                best_children4{end, 1}.decomposition_key), ...
+                    best_children4(1:(end-1),:))))
+        best_children4 = best_children4(1:(end-1), :);
+    else
+        num_extracted = num_extracted + 1;
+    end
+    children = children(2:end,:);
+end
+
+% Remove decompositions that are repeated
+best_children_decomposition_id4 = cellfun(@(x) [reshape(x.p, 1, 2*sys.U_DIMS), reshape(x.s, 1, sys.U_DIMS*sys.X_DIMS)], ...
+                                          best_children4, 'UniformOutput', false);
+best_children_decomposition_id4 = cell2mat(best_children_decomposition_id4);
+
+best_children_lqr_measure4 = cellfun(@(x) x.lqr_measure, best_children4);
+best_children_compute_fraction4 = cellfun(@(x) x.compute_fraction, best_children4);
+
+assert(all(abs(cellfun(@(x) x.measure, best_children4)...
+               - sys.measure_func(best_children_lqr_measure4, best_children_compute_fraction4))...
+            < eps), 'Check measure4 calculation!');
+
 save(strcat('data/', system_name, '_MCTS_', num2str(max_mcts_time), '_run5.mat'), 'sys', ...
             'best_children_decomposition_id1', 'best_children_lqr_measure1', 'best_children_compute_fraction1', ...
             'best_children_decomposition_id2', 'best_children_lqr_measure2', 'best_children_compute_fraction2', ...
-            'best_children_decomposition_id3', 'best_children_lqr_measure3', 'best_children_compute_fraction3');
+            'best_children_decomposition_id3', 'best_children_lqr_measure3', 'best_children_compute_fraction3', ...
+            'best_children_decomposition_id4', 'best_children_lqr_measure4', 'best_children_compute_fraction4');

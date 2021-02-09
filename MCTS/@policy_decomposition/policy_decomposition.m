@@ -20,6 +20,13 @@ classdef policy_decomposition < handle
     methods 
         
         function de = policy_decomposition(varargin)
+            %% Description
+            % Each node stores a list of child nodes encodings which are strings
+            % A dictionary stores action_tree (if not expanded) / 
+            % policy_decomposition objects (if expanded) for different nodes
+            % Avoids making copies of policy_decomposition objects and the
+            % nodes store the latest parent
+            
             % Constructor
             sys = varargin{1};
             if (~isfield(sys, 'fxfu_func'))
