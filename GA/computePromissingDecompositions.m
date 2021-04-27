@@ -7,6 +7,7 @@ clc;
 restoredefaultpath();
 system_name = 'manipulator3dof';
 addpath('utils');
+addpath('../iLQG_boxQP/iLQG utilities/decomposition_count');
 addpath(strcat('../iLQG_boxQP/new_systems/', system_name));
 load(strcat('../MCTS/data/', system_name, 'System.mat'));
 
@@ -65,7 +66,8 @@ MaxTotalTime = 100;
 ga_solutions = cell(0, 6); % x, err_joint, exitflag, output, population, scores
 tic;
 while((MaxTotalTime - toc) > 0)
-    options.InitialPopulation = generate_population(sys, options.PopulationSize);
+%     options.InitialPopulation = generate_population(sys, options.PopulationSize);
+    options.InitialPopulation = uniform_input_tree_sampling(sys, options.PopulationSize);
     options.MaxTime = min(MaxGATime, MaxTotalTime - toc);
     [ga_solutions{(end+1), :}] = ga(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon,IntCon,options);
 end
@@ -100,7 +102,8 @@ sys.decompositionlist = containers.Map();
 tic;
 while ((MaxTotalTime - toc) > 0)
     
-    new_population = generate_population(sys, num_to_extract);
+%     new_population = generate_population(sys, num_to_extract);
+    new_population = uniform_input_tree_sampling(sys, num_to_extract);
     new_population = num2cell(new_population, 2);
     new_population_measure = cellfun(@(x) computeJointMeasure(sys, ...
                                                               reshape(x(1:(2*sys.U_DIMS)), sys.U_DIMS, 2), ...
