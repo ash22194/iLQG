@@ -5,7 +5,7 @@ clc;
 %% 
 
 restoredefaultpath();
-system_name = 'manipulator3dof';
+system_name = 'manipulator4dof';
 addpath('utils');
 addpath('../iLQG_boxQP/iLQG utilities/decomposition_count');
 addpath(strcat('../iLQG_boxQP/new_systems/', system_name));
@@ -58,12 +58,13 @@ options.EliteCount = 0.2*options.PopulationSize;
 options.CreationFcn = @(nvars, fitness_fcn, options) ...
                         generate_population(sys, options.PopulationSize);
 options.CrossoverFcn = @(parents, options, nvars, fitness_fcn, unused, population) ...
-                         crossoverfunction(sys, parents, options, nvars, fitness_fcn, unused, population);
+                         crossoverfunctionsubtree(sys, parents, options, nvars, fitness_fcn, unused, population);
 options.MutationFcn = @(parents, options, nvars, fitness_fcn, state, score, population) ...
                          mutationfunction(sys, parents, options, nvars, fitness_fcn, state, score, population);
-MaxGATime = 100;
-MaxTotalTime = 100;
+MaxGATime = 600;
+MaxTotalTime = 600;
 ga_solutions = cell(0, 6); % x, err_joint, exitflag, output, population, scores
+sys.X_DIMS_MASKED = eye(sys.X_DIMS);
 tic;
 while((MaxTotalTime - toc) > 0)
 %     options.InitialPopulation = generate_population(sys, options.PopulationSize);
