@@ -9,6 +9,7 @@ n = 3;
 system_name = sprintf('manipulator%ddof', n);
 addpath(strcat('../iLQG_boxQP/new_systems/', system_name));
 addpath(genpath('test'));
+addpath('utils');
 load(strcat('../iLQG_boxQP/new_systems/', system_name, '/sys.mat'), 'sys');
 
 sys.X_DIMS = 2*sys.n; % [thi, ... dthi, ...]

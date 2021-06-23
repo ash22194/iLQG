@@ -26,8 +26,8 @@ function [root_node, info] = run_mcts(root_node, max_iter, max_time, determ)
     end
     
 	num_nodes_explored = sum(cellfun(@(x) isa(x, class(root_node)), root_node.nodelist.values));
-    
     fprintf('Best : %d, Time for Best : %d s, Number of nodes : %d\n', curr_best_measure, time_to_find_best, num_nodes_explored);
+
     info.best_measure = curr_best_measure;
     info.time_to_find_best = time_to_find_best;
     info.num_nodes_explored = num_nodes_explored;

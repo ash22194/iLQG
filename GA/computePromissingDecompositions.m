@@ -38,10 +38,7 @@ end
 sys.measure_func = @(err_lqr, err_compute) (1 - exp(-err_lqr)) .* err_compute;
 % sys.measure_func = @(err_lqr, err_compute) (min(20.0, err_lqr) / 20.0) .* err_compute;
 
-% sys.X_DIMS_MASKED = [1,0,0,0,1,0,0,0;
-%                      0,1,0,0,0,1,0,0;
-%                      0,0,1,0,0,0,1,0;
-%                      0,0,0,1,0,0,0,1];
+% sys.X_DIMS_MASKED = [eye(sys.X_DIMS/2), eye(sys.X_DIMS/2)];
 sys.X_DIMS_MASKED = eye(sys.X_DIMS);
 
 nvars = 2*sys.U_DIMS + sys.X_DIMS*sys.U_DIMS;
@@ -67,6 +64,7 @@ options.CrossoverFcn = @(parents, options, nvars, fitness_fcn, unused, populatio
 %                          mutationfunction(sys, parents, options, nvars, fitness_fcn, state, score, population);
 options.MutationFcn = @(parents, options, nvars, fitness_fcn, state, score, population) ...
                          mutationfunctionstatemasked(sys, parents, options, nvars, fitness_fcn, state, score, population);
+
 MaxGATime = 600;
 MaxTotalTime = 600;
 num_runs = 5;
@@ -144,7 +142,7 @@ end
 
 %% Random Sampling
 
-num_to_extract = 10;
+num_to_sample = 1000;
 random_stats = zeros(num_runs, 7);
 random_decompositions = cell(num_runs, 3);
 for rr=1:1:num_runs
