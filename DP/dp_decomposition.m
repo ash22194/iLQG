@@ -72,32 +72,32 @@ function [policies, value, info] = dp_decomposition(sys, Op, p, s)
             	sys_.U_DIMS_CONTROLLED = (1:sys_.U_DIMS)';
             	sys_.U_DIMS_FIXED = [];
             	sub_policies = leaf_nodes{1, 3};
+
+                disp('Final evaluation');
             	[value, info] = policy_evaluation(sys_, Op, sub_policies);
-            
-            	policies = cell(sys.U_DIMS, 1);
-           	info.time_policy_eval = info.time_total;
-            	info.time_policy_update = 0;
+                % value = 0;
+                % info.time_policy_eval = 0;
+                % info.time_policy_update = 0;
+                % info.time_total = 0;
             	for uu=1:1:size(sub_policies, 1)
                 	info.time_total = info.time_total + sub_policies{uu,4}.time_total;
-                	info.time_total = info.time_policy_eval + sub_policies{uu,4}.time_policy_eval;
-                	info.time_total = info.time_policy_update + sub_policies{uu,4}.time_policy_update;
+                	info.time_policy_eval = info.time_policy_eval + sub_policies{uu,4}.time_policy_eval;
+                	info.time_policy_update = info.time_policy_update + sub_policies{uu,4}.time_policy_update;
                 
-                	U_SUBDIM = sub_policies{uu,1};
-                	X_SUBDIM = sub_policies{uu,2};
-                	X_SUBDIM_BAR = 1:sys_.X_DIMS;
-                	X_SUBDIM_BAR(X_SUBDIM) = [];
+                	% U_SUBDIM = sub_policies{uu,1};
+                	% X_SUBDIM = sub_policies{uu,2};
+                	% X_SUBDIM_BAR = 1:sys_.X_DIMS;
+                	% X_SUBDIM_BAR(X_SUBDIM) = [];
 
-                	subpolicy_size = Op.num_points;
-                	subpolicy_size(X_SUBDIM_BAR) = 1;
-                	subpolicy_newsize = Op.num_points;
-                	subpolicy_newsize(X_SUBDIM) = 1;
+                	% subpolicy_size = Op.num_points;
+                	% subpolicy_size(X_SUBDIM_BAR) = 1;
+                	% subpolicy_newsize = Op.num_points;
+                	% subpolicy_newsize(X_SUBDIM) = 1;
 
-                	policies(U_SUBDIM) = cellfun(@(x) repmat(reshape(x, subpolicy_size), subpolicy_newsize), sub_policies{uu,3}, 'UniformOutput', false);
+                 	% policies(U_SUBDIM) = cellfun(@(x) repmat(reshape(x, subpolicy_size), subpolicy_newsize), sub_policies{uu,3}, 'UniformOutput', false);
             	end
             	disp('Saving final');
-            	if (sys.decomposition_id~=0)
-            	    info.state_grid = {};
-            	end
+            	info = rmfield(info, 'state_grid');
             	save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'policies', 'value', 'info', 'p', 's', '-v7.3', '-nocompression');
             	return;
             end

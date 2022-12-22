@@ -57,10 +57,10 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
     else
         for uui = 1:1:length(U_DIMS_FREE)
             uu = U_DIMS_FREE(uui);
-            u{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) * rand(num_points(X_DIMS_FREE));
+            u{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) * rand([num_points(X_DIMS_FREE), 1]);
         end
         [x{X_DIMS_FREE}] = ndgrid(grid_indices{:});
-        G_ = zeros(num_points(X_DIMS_FREE));
+        G_ = zeros([num_points(X_DIMS_FREE), 1]);
     
         info.iter = 0;
         info.time_total = 0;
@@ -80,7 +80,7 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
         subpolicy_size(X_SUBDIM_BAR) = 1;
         subpolicy_newsize = num_points(X_DIMS_FREE);
         subpolicy_newsize(X_SUBDIM) = 1;
-        
+
         u(U_SUBDIM) = cellfun(@(x) repmat(reshape(x, subpolicy_size), subpolicy_newsize), sub_policies{jj,3}, 'UniformOutput', false);
     end
     

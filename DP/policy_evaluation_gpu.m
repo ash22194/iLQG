@@ -20,6 +20,7 @@ function [value, info] = policy_evaluation_gpu(sys, Op, sub_policies)
     gtol              = Op.gtol;
     num_points        = Op.num_points;
 
+    D                 = gpuDevice;
 %% Initialize 
     % Create state grids
     x = cell(X_DIMS, 1);
@@ -105,10 +106,10 @@ function [value, info] = policy_evaluation_gpu(sys, Op, sub_policies)
         % Update value function
         G_ = cost_total + gamma_*Gnext;
         G_(goal_grid{:}) = 0;
-        
         time_iter = toc;
-%         disp(strcat('Policy evaluation iter :', num2str(policy_iter), ', time : ', num2str(time_iter)));
+        disp(strcat('Policy evaluation iter :', num2str(policy_iter), ', time : ', num2str(time_iter)));
     end
+    wait(D);
     time_total = toc(time_start);
     
     value = G_;

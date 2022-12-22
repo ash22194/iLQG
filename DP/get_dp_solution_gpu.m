@@ -15,7 +15,7 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
     R                 = sys.R;
     gamma_            = sys.gamma_;
     dt                = sys.dt;
-    
+
     max_iter           = Op.max_iter;
     max_policy_iter    = Op.max_policy_iter;
     gtol               = Op.gtol;
@@ -23,7 +23,9 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
     u_mean_tol         = Op.u_mean_tol;
     num_points         = Op.num_points;
     num_action_samples = prod(Op.num_action_samples(U_DIMS_FREE));
-    
+
+    D                  = gpuDevice;
+
     % Logging
     save_dir       = Op.save_dir;
     subsystem_id   = strcat('U', sprintf('%d', sys.U_DIMS_FREE), '_X', sprintf('%d', sys.X_DIMS_FREE));
@@ -54,14 +56,19 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
         info           = decomposition.info;
         x(X_DIMS_FREE) = info.state_grid;
         G_             = info.value;
+
+        info.state_grid = [];
+        info.value = [];
+        clear 'decomposition';
+
     else
         for uui = 1:1:length(U_DIMS_FREE)
             uu = U_DIMS_FREE(uui);
-            u{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) * rand(num_points(X_DIMS_FREE), 'gpuArray');
+            u{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) * rand([num_points(X_DIMS_FREE), 1], 'gpuArray');
         end
         [x{X_DIMS_FREE}] = ndgrid(grid_indices{:});
-        G_ = gpuArray(zeros(num_points(X_DIMS_FREE)));
-    
+        G_ = gpuArray(zeros([num_points(X_DIMS_FREE), 1]));
+        
         info.iter = 0;
         info.time_total = 0;
         info.time_policy_eval = 0;
@@ -90,7 +97,8 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
     sys.active_actions = int32(sys.active_actions);
     
     sys.grid_size = ones(X_DIMS,1);
-    sys.grid_size(X_DIMS_FREE) = size(x{X_DIMS_FREE(1)});
+    size_x = size(x{X_DIMS_FREE(1)});
+    sys.grid_size(X_DIMS_FREE) = size_x(1:length(X_DIMS_FREE));
     sys.grid_size = int32(sys.grid_size);
 
     % Initialize cost functions
@@ -141,6 +149,10 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
             info.time_policy_update = time_policy_update;
             sys_ = sys;
             save(save_file, 'policy', 'info', 'sys_', '-v7.3', '-nocompression');
+            
+            info.state_grid = [];
+            info.value = [];
+            clear 'policy';
         end
         
         G = gpuArray(ones(size(G_)));
@@ -159,19 +171,15 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
             % Iterate to estimate value function
             G = G_;
             policy_iter = policy_iter + 1;
-            time_interp_start = tic;
             Gnext = feval(kernel_interp, x_{X_DIMS_FREE}, G_, kernel_inputs{:});
-            time_interp = toc(time_interp_start);
             Gnext(goal_grid{:}) = 0;
             
             % Update value function
             G_ = cost_total + gamma_*Gnext;
             G_(goal_grid{:}) = 0;
-%             fprintf('Policy Iter : %d, Time Interp : %.4f\n', policy_iter, time_interp);
         end
         time_policy_eval_curr = toc(time_policy_eval_start);
         time_policy_eval = time_policy_eval + time_policy_eval_curr;
-        clear 'G' 'cost_total' 'cost_action';
 
         % Update policy
         % Compute Q(x,u) values g(x,u) + G(x+udt) for different actions when value
@@ -189,13 +197,9 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
                 cost_action_ = cost_action_ + dt * R(uu, uu) * (u_{uu} - u0(uu)).^2;
             end
             
-            time_dyn_start = tic;
             x__ = dyn_finite_rk4_mex(sys, x, u_, dt);
-            time_dyn = toc(time_dyn_start);
             
-            time_interp_start = tic;
             Gnext_ = feval(kernel_interp, x__{X_DIMS_FREE}, G_, kernel_inputs{:});
-            time_interp = toc(time_interp_start);
             Gnext_(goal_grid{:}) = 0;
             Gnext_ = cost_fixed + cost_action_ + gamma_*Gnext_;
             Gnext_(goal_grid{:}) = 0;
@@ -208,7 +212,6 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
                 unew{uu} = (u_{uu} .* actionUpdate) + (unew{uu} .* actionUpdateBar);
                 unew{uu}(goal_grid{:}) = u0(uu);
             end
-%             fprintf('Policy Update : %d, Time Interp : %.4f, Time Dyn : %.4f\n', i, time_interp, time_dyn);
         end
         
         for uui = 1:1:length(U_DIMS_FREE)
@@ -220,8 +223,7 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
         u = unew;
         time_policy_update_curr = toc(time_policy_update_start);
         time_policy_update = time_policy_update + time_policy_update_curr;
-        clear 'x__' 'u_' 'minG' 'cost_action_' 'Gnext_' 'actionUpdate' 'actionUpdateBar' 'unew';
-        
+
         if (all(uerror_max < u_max_tol(U_DIMS_FREE)) ...
             && all(uerror_mean < u_mean_tol(U_DIMS_FREE)))
             constant_policy_count = constant_policy_count + 1;
@@ -233,17 +235,20 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
         else
             disp(strcat(sprintf('Iteration : %d,', iter), ...
                         ' Max Err :', sprintf(' %.3f', uerror_max), ...
-                        ', Mean Err :', sprintf(' %.5f', uerror_mean), ...
-                        ', Time Eval : ', num2str(time_policy_eval_curr), ...
-                        ', Time Update : ', num2str(time_policy_update_curr)));
+                        ', Mean Err :', sprintf(' %.5f', uerror_mean)));
             constant_policy_count = 0;
         end
-        
     end
+    wait(D)
     time_total = toc(time_start);
     
 %% Return
     policy = u(U_DIMS_FREE);
+    info.X_DIMS_FREE = X_DIMS_FREE;
+    info.X_DIMS_FREE = X_DIMS_FIXED;
+    info.U_DIMS_FREE = U_DIMS_FREE;
+    info.U_DIMS_FIXED = U_DIMS_FIXED;
+    info.U_DIMS_CONTROLLED = U_DIMS_CONTROLLED;
     info.state_grid = x(X_DIMS_FREE);
     info.value = G_;
     info.iter = iter;
