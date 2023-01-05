@@ -13,6 +13,7 @@ function [value, info] = trajpolicy_evaluation_gpu(sys, Op, sub_policies)
     goal              = sys.goal;     % trajectory to track
     u0                = sys.u0;
     Q                 = sys.Q;
+    Qf                = sys.Qf;
     R                 = sys.R;
     gamma_            = sys.gamma_;
     dt                = sys.dt;
@@ -26,12 +27,15 @@ function [value, info] = trajpolicy_evaluation_gpu(sys, Op, sub_policies)
     % Create state grids
     x = cell(X_DIMS+1, 1);
     grid_indices = cell(length(X_DIMS_FREE)+1, 1);
+    grid_cells_state = cell(length(X_DIMS_FREE), 1);
     for xxi = 1:1:length(X_DIMS_FREE)
         xx = X_DIMS_FREE(xxi);
         grid_indices{xxi} = gpuArray(linspace(limits(xx,1), limits(xx,2), num_points(xx)));
+        grid_cells_state{xxi} = linspace(1, num_points(xx), num_points(xx));
     end
     grid_indices{end} = gpuArray(linspace(time_limits(1), time_limits(2), num_points_t));
     [x{[X_DIMS_FREE; X_DIMS+1]}] = ndgrid(grid_indices{:});
+
     % Values for the fixed states? - Trajectory value at the time instant?
     for ff=1:1:length(X_DIMS_FIXED)
         ffi = X_DIMS_FIXED(ff);
@@ -69,10 +73,12 @@ function [value, info] = trajpolicy_evaluation_gpu(sys, Op, sub_policies)
     % Initialize cost functions
     % State cost assuming diagonal Q matrix
     cost_state = 0;
+    cost_final = 0;
     for xxi = 1:1:length(X_DIMS_FREE)
         xx = X_DIMS_FREE(xxi);
         goal_xx = goal(xx, :);
         cost_state = cost_state + dt * Q(xx,xx) * (x{xx} - goal_xx(time_indices)).^2;
+        cost_final = cost_final + Qf(xx,xx) * (x{xx}(grid_cells_state{:}, num_points_t) - goal_xx(end)).^2;
     end
     
     % Controlled action cost assuming diagonal R matrix
@@ -91,14 +97,15 @@ function [value, info] = trajpolicy_evaluation_gpu(sys, Op, sub_policies)
     goal_grid = cat(1, goal_grid, {linspace(1, num_points_t, num_points_t)});
     goal_grid = sub2ind([num_points(X_DIMS_FREE),num_points_t], goal_grid{:});
     
-    G_ = zeros(num_points(X_DIMS_FREE));
-    G = ones(size(G_));
+    G_ = gpuArray(zeros([num_points(X_DIMS_FREE), num_points_t]));
+    G_(grid_cells_state{:}, num_points_t) = cost_final;
+    G = gpuArray(ones(size(G_)));
     [kernel_interp, kernel_inputs] = generate_interp_kernel(x{[X_DIMS_FREE; X_DIMS+1]});
     policy_iter = 0;
     time_total = 0;
     
     time_start = tic;
-    x_ = dyn_finite_rk4(sys, x, u, dt); % Next state after a step
+    x_ = dyn_finite_rk4_mex(sys, x, u, dt); % Next state after a step
     while ((max(abs(G_ - G), [], 'all') > gtol) && (policy_iter < max_iter))
         % Iterate to estimate value function
         tic;
@@ -111,6 +118,7 @@ function [value, info] = trajpolicy_evaluation_gpu(sys, Op, sub_policies)
         % Update value function
         G_ = cost_total + gamma_*Gnext;
         G_(goal_grid) = 0;
+        G_(grid_cells_state{:}, num_points_t) = cost_final;
         
         time_iter = toc;
 %         disp(strcat('Policy evaluation iter :', num2str(policy_iter), ', time : ', num2str(time_iter)));

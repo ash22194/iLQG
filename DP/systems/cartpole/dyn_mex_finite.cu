@@ -27,7 +27,11 @@ __global__ void dyn3_mex_continuous(double* const d_dx, // outputs
         + (threadIdx.x + threadIdx.y * blockDim.x);
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
     int num_elements = grid_size[0] * grid_size[1] * grid_size[2]
+<<<<<<< HEAD
                        * grid_size[3];
+=======
+                       * grid_size[3] * grid_size[4];
+>>>>>>> d4a8644f0cfe6c923e1cb6f7d4bc15ac1a82d5e5
     double x3, x4, u1, u2;
 
     int index3 = (grid_size[2] > 1) ? index : 0;
@@ -77,7 +81,11 @@ __global__ void dyn4_mex_continuous(double* const d_dth, // outputs
         + (threadIdx.x + threadIdx.y * blockDim.x);
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
     int num_elements = grid_size[0] * grid_size[1] * grid_size[2]
+<<<<<<< HEAD
                        * grid_size[3];
+=======
+                       * grid_size[3] * grid_size[4];
+>>>>>>> d4a8644f0cfe6c923e1cb6f7d4bc15ac1a82d5e5
     double x3, x4, u1, u2;
 
     int index3 = (grid_size[2] > 1) ? index : 0;
@@ -124,7 +132,11 @@ __global__ void step(double* const x1n, // outputs
         + (threadIdx.x + threadIdx.y * blockDim.x);
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
     int num_elements = grid_size[0] * grid_size[1] * grid_size[2]
+<<<<<<< HEAD
                        * grid_size[3];
+=======
+                       * grid_size[3] * grid_size[4];
+>>>>>>> d4a8644f0cfe6c923e1cb6f7d4bc15ac1a82d5e5
     
     while (index < num_elements)
     {
@@ -145,7 +157,11 @@ __global__ void rk4_wbounds(double* const x1n, // outputs
         + (threadIdx.x + threadIdx.y * blockDim.x);
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
     int num_elements = grid_size[0] * grid_size[1] * grid_size[2]
+<<<<<<< HEAD
                        * grid_size[3];
+=======
+                       * grid_size[3] * grid_size[4];
+>>>>>>> d4a8644f0cfe6c923e1cb6f7d4bc15ac1a82d5e5
     while (index < num_elements)
     {
         x1n[index] = x1[index] + dt / 6.0 * (k1_x1[index] + 2.0 * k2_x1[index] + 2.0 * k3_x1[index] + k4_x1[index]);        
@@ -242,8 +258,14 @@ void mexFunction(int nlhs, mxArray* plhs[],
     mxInitGPU();
 
     /* Throw an error if the input is not a GPU array. */
+<<<<<<< HEAD
     if ((nrhs != 15) || !(mxIsGPUArray(prhs[0])) || !(mxIsGPUArray(prhs[1])) || !(mxIsGPUArray(prhs[2])) 
                      || !(mxIsGPUArray(prhs[3])) || !(mxIsGPUArray(prhs[4])) || !(mxIsGPUArray(prhs[5]))) {
+=======
+    if ((nrhs != 16) || !(mxIsGPUArray(prhs[0])) || !(mxIsGPUArray(prhs[1])) || !(mxIsGPUArray(prhs[2])) 
+                     || !(mxIsGPUArray(prhs[3])) || !(mxIsGPUArray(prhs[4])) || !(mxIsGPUArray(prhs[5]))
+                     || !(mxIsGPUArray(prhs[6]))) {
+>>>>>>> d4a8644f0cfe6c923e1cb6f7d4bc15ac1a82d5e5
         mexErrMsgIdAndTxt(errId, errMsg);
     }
 
@@ -251,6 +273,7 @@ void mexFunction(int nlhs, mxArray* plhs[],
     X2 = mxGPUCreateFromMxArray(prhs[2]);
     dX1 = mxGPUCreateFromMxArray(prhs[1]);
     dX2 = mxGPUCreateFromMxArray(prhs[3]);
+<<<<<<< HEAD
     in1 = mxGPUCreateFromMxArray(prhs[4]);
     in2 = mxGPUCreateFromMxArray(prhs[5]);
     grid_size = mxGPUCreateFromMxArray(prhs[11]);
@@ -275,6 +298,32 @@ void mexFunction(int nlhs, mxArray* plhs[],
     p_x_dims_free = mxGetDoubles(prhs[14]);
     mwSize const* num_x_dims = mxGetDimensions(prhs[14]);
     if ((mxGetNumberOfDimensions(prhs[14]) != 2) || (num_x_dims[1] > 1)) {
+=======
+    in1 = mxGPUCreateFromMxArray(prhs[5]);
+    in2 = mxGPUCreateFromMxArray(prhs[6]);
+    grid_size = mxGPUCreateFromMxArray(prhs[12]);
+    active_actions = mxGPUCreateFromMxArray(prhs[13]);
+
+    p_m = mxGetDoubles(prhs[7]); 
+    double const mc = p_m[0];
+    p_m = mxGetDoubles(prhs[8]); 
+    double const mp = p_m[0];
+
+    p_l = mxGetDoubles(prhs[9]); 
+    double const l = p_l[0];
+
+    p_g = mxGetDoubles(prhs[10]);
+    double const g = p_g[0];
+    
+    p_dt = mxGetDoubles(prhs[11]);
+    double const dt = p_dt[0];
+    
+    p_limits = mxGetDoubles(prhs[14]);
+    
+    p_x_dims_free = mxGetDoubles(prhs[15]);
+    mwSize const* num_x_dims = mxGetDimensions(prhs[15]);
+    if ((mxGetNumberOfDimensions(prhs[15]) != 2) || (num_x_dims[1] > 1)) {
+>>>>>>> d4a8644f0cfe6c923e1cb6f7d4bc15ac1a82d5e5
         mexErrMsgIdAndTxt(errId, errMsg);
     }
     

@@ -5,7 +5,7 @@ close all;
 %% 
 
 restoredefaultpath();
-system_name = 'biped2d';
+system_name = 'manipulator4dof';
 addpath(strcat('../iLQG_boxQP/new_systems/', system_name));
 addpath('../iLQG_boxQP/iLQG utilities/decomposition_count');
 addpath('utils');

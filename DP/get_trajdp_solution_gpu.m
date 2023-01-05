@@ -13,6 +13,7 @@ function [policy, info] = get_trajdp_solution_gpu(sys, Op, sub_policies)
     goal              = sys.goal;     % trajectory to track
     u0                = sys.u0;
     Q                 = sys.Q;
+    Qf                = sys.Qf;
     R                 = sys.R;
     gamma_            = sys.gamma_;
     dt                = sys.dt;
@@ -44,9 +45,11 @@ function [policy, info] = get_trajdp_solution_gpu(sys, Op, sub_policies)
     u = cell(U_DIMS, 1);
     u(U_DIMS_FIXED) = num2cell(gpuArray(zeros(length(U_DIMS_FIXED), 1)));
     grid_indices = cell(length(X_DIMS_FREE)+1, 1);
+    grid_cells_state = cell(length(X_DIMS_FREE), 1);
     for xxi = 1:1:length(X_DIMS_FREE)
         xx = X_DIMS_FREE(xxi);
         grid_indices{xxi} = gpuArray(linspace(limits(xx,1), limits(xx,2), num_points(xx)));
+        grid_cells_state{xxi} = linspace(1, num_points(xx), num_points(xx));
     end
     grid_indices{end} = gpuArray(linspace(time_limits(1), time_limits(2), num_points_t));
 
@@ -63,6 +66,7 @@ function [policy, info] = get_trajdp_solution_gpu(sys, Op, sub_policies)
             u{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) ...
                                   * rand([num_points(X_DIMS_FREE), num_points_t], ...
                                          'gpuArray');
+            u{uu}(grid_cells_state{:}, num_points_t) = u0(uu, num_points_t);
         end
         [x{[X_DIMS_FREE; X_DIMS+1]}] = ndgrid(grid_indices{:});
         G_ = gpuArray(zeros([num_points(X_DIMS_FREE), num_points_t]));
@@ -103,17 +107,20 @@ function [policy, info] = get_trajdp_solution_gpu(sys, Op, sub_policies)
     % Initialize cost functions
     % State cost assuming diagonal Q matrix
     cost_state = 0;
+    cost_final = 0;
     for xxi = 1:1:length(X_DIMS_FREE)
         xx = X_DIMS_FREE(xxi);
         goal_xx = goal(xx, :);
         cost_state = cost_state + dt * Q(xx,xx) * (x{xx} - goal_xx(time_indices)).^2;
+        cost_final = cost_final + Qf(xx,xx) * (x{xx}(grid_cells_state{:}, num_points_t) - goal_xx(end)).^2;
     end
     
     % Controlled action cost assuming diagonal R matrix
     cost_action_controlled = 0;
     for uui=1:1:length(U_DIMS_CONTROLLED)
         uu = U_DIMS_CONTROLLED(uui);
-        cost_action_controlled = cost_action_controlled + dt * R(uu, uu) * (u{uu} - u0(uu)).^2;
+        u0_uu = u0(uu,:);
+        cost_action_controlled = cost_action_controlled + dt * R(uu, uu) * (u{uu} - u0_uu(time_indices)).^2;
     end
     cost_fixed = cost_state + cost_action_controlled;
     
@@ -132,7 +139,8 @@ function [policy, info] = get_trajdp_solution_gpu(sys, Op, sub_policies)
     time_total = info.time_total;
     time_policy_eval = info.time_policy_eval;
     time_policy_update = info.time_policy_update;
-    
+    G_(grid_cells_state{:}, num_points_t) = cost_final;
+
 %% Policy Iteration
     time_start = tic;
     while (iter < max_iter)
@@ -153,10 +161,11 @@ function [policy, info] = get_trajdp_solution_gpu(sys, Op, sub_policies)
         G = gpuArray(ones(size(G_)));
         policy_iter = 0;
         cost_action = 0;
-        x_ = dyn_finite_rk4(sys, x, u, dt);
+        x_ = dyn_finite_rk4_mex(sys, x, u, dt);
         for uui = 1:1:length(U_DIMS_FREE)
             uu = U_DIMS_FREE(uui);
-            cost_action = cost_action + dt * R(uu, uu) * (u{uu} - u0(uu)).^2;
+            u0_uu = u0(uu, :);
+            cost_action = cost_action + dt * R(uu, uu) * (u{uu} - u0_uu(time_indices)).^2;
         end
         
         cost_total = cost_fixed + cost_action;
@@ -172,6 +181,7 @@ function [policy, info] = get_trajdp_solution_gpu(sys, Op, sub_policies)
             % Update value function
             G_ = cost_total + gamma_*Gnext;
             G_(goal_grid) = 0;
+            G_(grid_cells_state{:}, num_points_t) = cost_final;
         end
         time_policy_eval = time_policy_eval + toc(time_policy_eval_start);
         clear 'G';
@@ -188,24 +198,27 @@ function [policy, info] = get_trajdp_solution_gpu(sys, Op, sub_policies)
             cost_action_ = 0;
             for uui=1:1:length(U_DIMS_FREE)
                 uu = U_DIMS_FREE(uui);
+                u0_uu = u0(uu, :);
                 u_{uu} = lims(uu, 1) + (lims(uu, 2) - lims(uu, 1)) * rand(size(G_), 'gpuArray');
-                cost_action_ = cost_action_ + dt * R(uu, uu) * (u_{uu} - u0(uu)).^2;
+                u_{uu}(grid_cells_state{:}, num_points_t) = u0_uu(num_points_t);
+                cost_action_ = cost_action_ + dt * R(uu, uu) * (u_{uu} - u0_uu(time_indices)).^2;
             end
             
-            x__ = dyn_finite_rk4(sys, x, u_, dt);
+            x__ = dyn_finite_rk4_mex(sys, x, u_, dt);
             
             Gnext_ = feval(kernel_interp, x__{[X_DIMS_FREE; X_DIMS+1]}, G_, kernel_inputs{:});
             Gnext_(goal_grid) = 0;
-            Gaction = cost_fixed + cost_action_ + gamma_*Gnext_;
-            Gaction(goal_grid) = 0;
+            Gnext_ = cost_fixed + cost_action_ + gamma_*Gnext_;
+            Gnext_(goal_grid) = 0;
+            Gnext_(grid_cells_state{:}, num_points_t) = cost_final;
             
-            actionUpdate = Gaction < minG;
+            actionUpdate = Gnext_ < minG;
             actionUpdateBar = ~actionUpdate;
             minG = (Gnext_ .* actionUpdate) + (minG .* actionUpdateBar);
             for uui = 1:1:length(U_DIMS_FREE)
                 uu = U_DIMS_FREE(uui);
                 unew{uu} = (u_{uu} .* actionUpdate) + (unew{uu} .* actionUpdateBar);
-                unew{uu}(goal_grid) = u0(uu);
+                unew{uu}(goal_grid) = u0(uu, :);
             end
         end
 

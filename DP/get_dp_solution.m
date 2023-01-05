@@ -80,7 +80,7 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
         subpolicy_size(X_SUBDIM_BAR) = 1;
         subpolicy_newsize = num_points(X_DIMS_FREE);
         subpolicy_newsize(X_SUBDIM) = 1;
-        
+
         u(U_SUBDIM) = cellfun(@(x) repmat(reshape(x, subpolicy_size), subpolicy_newsize), sub_policies{jj,3}, 'UniformOutput', false);
     end
     

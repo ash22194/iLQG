@@ -1,15 +1,22 @@
 clear;
 close all;
-clc;
+% clc;
 
 %% 
 
 restoredefaultpath();
-system_name = 'quadcopter_transformed';
+system_name = 'biped2d';
 addpath('utils');
 addpath(strcat('../iLQG_boxQP/new_systems/', system_name));
 addpath('../iLQG_boxQP/iLQG utilities/decomposition_count');
+% load(strcat('../iLQG_boxQP/new_systems/', system_name, '/', system_name, 'System.mat'));
 load(strcat('../MCTS/data/', system_name, 'System.mat'));
+% sys.I(2,2) = 0.5*(sys.I(1,1) + sys.I(3,3));
+% sys.gamma_ = 1;
+sys.num_action_samples = [5, 5, 2, 2];
+sys.max_iter = 2000;
+sys.state_bounds(1,:) = [0.92, 1];
+sys.state_bounds(2,:) = [0.2, 0.3] + pi/2;
 
 % Add function to compute linearized dynamics
 sys.fxfu_func = @(x, u) [dynx(sys, x, u), dynu(sys, x, u)];
@@ -19,7 +26,7 @@ sys.B = fxfu(:, (1+sys.X_DIMS):end);
 
 % Add function to compute LQR metric
 sys.lambda_ = (1 - sys.gamma_) / sys.dt;
-[~, S_j, ~] = lqr(sys.A - (sys.lambda_ / 2) * eye(size(sys.A,1)), sys.B, sys.Q, sys.R, zeros(size(sys.B)));
+[K_j, S_j, ~] = lqr(sys.A - (sys.lambda_ / 2) * eye(size(sys.A,1)), sys.B, sys.Q, sys.R, zeros(size(sys.B)));
 % sys.S = sym('S', [sys.X_DIMS, sys.X_DIMS]);
 % sys.S = tril(sys.S,0) + tril(sys.S,-1).';
 % sys.a = sym('a', [sys.X_DIMS, 1]);
@@ -30,7 +37,8 @@ sys.lambda_ = (1 - sys.gamma_) / sys.dt;
 % end
 % sys.err_lqr_func = matlabFunction(err_lqr, 'Vars', {sys.S, sys.a, sys.b});
 sys.err_lqr_func = @(S,a,b) definite_integral_parabola(S-S_j,a,b);
-sys.da = prod(sys.state_bounds(:,2) - sys.state_bounds(:,1), 1);
+% sys.da = prod(sys.state_bounds(:,2) - sys.state_bounds(:,1), 1);
+sys.da = definite_integral_parabola(S_j, sys.state_bounds(:,1)-sys.l_point, sys.state_bounds(:,2)-sys.l_point);
 
 sys.measure_func = @(err_lqr, err_compute) (1 - exp(-err_lqr)) .* err_compute;
 % sys.measure_func = @(err_lqr, err_compute) (min(20.0, err_lqr) / 20.0) .* err_compute;
@@ -69,8 +77,8 @@ options.CrossoverFcn = @(parents, options, nvars, fitness_fcn, unused, populatio
 %                          mutationfunction(sys, parents, options, nvars, fitness_fcn, state, score, population);
 options.MutationFcn = @(parents, options, nvars, fitness_fcn, state, score, population) ...
                          mutationfunctionstatemasked(sys, parents, options, nvars, fitness_fcn, state, score, population);
-MaxGATime = 1800;
-MaxTotalTime = 1800;
+MaxGATime = 150;
+MaxTotalTime = 150;
 num_runs = 5;
 ga_stats = zeros(num_runs, 7);
 ga_decompositions = cell(num_runs, 2);
@@ -154,7 +162,6 @@ for rr=1:1:num_runs
         decoded_ga_decompositions{rr, 3}(:,:,dd) ...
          = reshape(ga_decompositions{rr,1}(dd, (1+2*sys.U_DIMS^2):end) - 48, sys.U_DIMS, sys.X_DIMS);
     end
-    
 end
 
 %% Random Sampling
@@ -225,5 +232,5 @@ sys.decompositionlist = [];
 % save(strcat('data/', system_name,'_GA_NoCrossover_RandomSampled_',num2str(MaxTotalTime),'_run5.mat'), ...
 %      'sys', 'final_population', 'final_scores', 'best_population', 'best_population_measure', 'sampled_population', 'sampled_population_measure', 'sampled_population_err_lqr', 'MaxTotalTime', 'MaxGATime', 'num_to_extract');
 
-save(strcat('data/', system_name,'_GA_NoCrossover_UniformSampled_explqrobj',num2str(MaxTotalTime),'_rerun.mat'), ...
+save(strcat('data/', system_name,'_GA_NoCrossover_UniformSampled_explqrobj',num2str(MaxTotalTime),'_newactionsample.mat'), ...
      'sys', 'ga_stats', 'ga_decompositions', 'decoded_ga_decompositions', 'random_stats', 'random_decompositions', 'MaxTotalTime', 'MaxGATime', 'num_to_extract');
