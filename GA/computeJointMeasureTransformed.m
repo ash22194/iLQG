@@ -1,4 +1,4 @@
-function [measure, err_lqr, err_compute] = computeJointMeasure(sys, p, s)
+function [measure, err_lqr, err_compute] = computeJointMeasureTransformed(sys, p, s)
 %% 
 % p is m x 2 matrix where pi1 denotes the parent to input i
 %                         pi2 denotes the child ID for input i
@@ -12,11 +12,11 @@ if (any(c_eq~=0) || any(c > 0))
     err_lqr = inf;
     err_compute = 1;
     measure = sys.measure_func(err_lqr, err_compute);
-
+    
 else
     p = round(p);
     s = logical(round(s));
-
+    
     if (isfield(sys, 'decompositionlist'))
         % Encode decomposition
         % Compute encoding for decomposition
@@ -24,9 +24,12 @@ else
         action_dependence = zeros(sys.U_DIMS, sys.U_DIMS);
         actions = 1:1:sys.U_DIMS;
         states = s;
+        parents = p;
         while(~isempty(actions))
             acoupled_ = all((ones(length(actions), 1) * states(1,:)) ...
-                            == states, 2);
+                            == states, 2) ...
+                        & all((ones(length(actions), 1) * parents(1,:)) ...
+                              == parents, 2);
             acoupled = actions(acoupled_);
             action_coupling(acoupled, acoupled) = 1;
 
@@ -35,6 +38,7 @@ else
 
             actions(acoupled_) = [];
             states(acoupled_, :) = [];
+            parents(acoupled_, :) = [];
         end
 
         decomposition_key = [reshape(action_coupling, 1, sys.U_DIMS^2), ...
@@ -43,18 +47,19 @@ else
         decomposition_key = fastint2str(decomposition_key);
         if (sys.decompositionlist.isKey(decomposition_key))
             measure = sys.decompositionlist(decomposition_key);
-            err_lqr = measure(2); 
+            err_lqr = measure(2);
             err_compute = measure(3);
             measure = measure(1);
             return;
         end
     end
-
+    
     p_ = [linspace(1, sys.U_DIMS, sys.U_DIMS)', p];
     % Build tree
     action_tree = {};
     queue = {{0; -1}};
-
+    action_coupling2 = zeros(sys.U_DIMS, sys.U_DIMS);
+    action_dependence2 = zeros(sys.U_DIMS, sys.U_DIMS);
     while(~isempty(queue))
         curr_node = queue{1}; % pop the top element
         curr_parent = curr_node{2};
@@ -71,17 +76,24 @@ else
             queue{end+1} = {curr_children{ii}; curr_node};
         end
 
-        u0_curr = zeros(sys.U_DIMS, 1);
+        u0_curr = -sys.Tv * sys.u0;
         K_curr = zeros(sys.U_DIMS, sys.X_DIMS);
         if (curr_node~=0)
             curr_state = s(curr_node(1), :);
-            u0_curr(curr_node) = sys.u0(curr_node);
+            u0_curr(curr_node) = 0;
+            action_coupling2(curr_node, curr_node) = 1;
+            action_dependence2(curr_node, cell2mat(curr_children)) = 1;
         else
             curr_state = zeros(1, sys.X_DIMS);
         end
         action_tree(end+1, :) = {curr_node, curr_state, ...
                                  u0_curr, K_curr, ...
-                                 curr_parent, curr_children};
+                                 curr_parent, {}, curr_children};
+    end
+    
+    if (isfield(sys, 'decompositionlist'))
+        assert(all(action_coupling == action_coupling2, 'all') && ...
+               all(action_dependence == action_dependence2, 'all'), 'Check encoding scheme!');
     end
 
     err_compute = 0;
@@ -98,16 +110,16 @@ else
                 disp(ME.identifier);
                 S = -eye(sys.X_DIMS);
             end
-
+            
             eigS = eig(S);
-            if (isempty(eigS) || any(~isreal(eigS)) || any(eigS < (-eps)))
+            if (isempty(eigS) || any(~isreal(eigS)) || any(eigS < -1e-8))
                 err_lqr = inf;
                 err_compute = 1;
             else
                 try
                     err_lqr = sys.err_lqr_func(S, sys.state_bounds(:,1)-sys.l_point, sys.state_bounds(:,2)-sys.l_point)/sys.da;
                     assert(err_lqr >= err_lqr_lowerbound, 'LQR error measure cannot be negative');
-                catch ME
+                catch
                     disp(ME.identifier);
                 end
 
@@ -124,31 +136,31 @@ else
                                            * (sample_complexity + step_complexity ...
                                               + interp_complexity + action_update_complexity);
                 joint_compute = M * (subpolicy_eval_compute + subpolicy_update_compute);
-
+                
                 err_compute = err_compute / joint_compute;
             end
             err_lqr = abs(err_lqr);
             measure = sys.measure_func(err_lqr, err_compute);
-
+            
             if ((measure == 0) && (err_lqr~=0))
                 measure = err_lqr * err_compute;
             end
-
+            
             if (isfield(sys, 'decompositionlist'))
                 sys.decompositionlist(decomposition_key) = [measure, err_lqr, err_compute];
             end
             return;
         end
-
+        
         for ii=1:1:size(leaf_nodes,1)
             u0_ = leaf_nodes{ii, 3};
             K = leaf_nodes{ii, 4};
-            if (isfield(sys, 'fxfu_func'))
-                fxfu = sys.fxfu_func(sys.l_point, u0_);
-            else
-                fxfu = eval(subs(sys.fxfu, [sys.xu], [sys.l_point; u0_]));
+            try
+                fxfu = sys.fxfu_func(zeros(sys.X_DIMS, 1), u0_);
+            catch
+                disp('Error computing derivatives!');
             end
-
+            
             A_ = fxfu(:,1:sys.X_DIMS);
             B_ = fxfu(:,(sys.X_DIMS+1):end);
             Q_ = sys.Q;
@@ -168,14 +180,14 @@ else
                 err_lqr = inf;
                 err_compute = 1;
                 measure = sys.measure_func(err_lqr, err_compute);
-
+                
                 if (isfield(sys, 'decompositionlist'))
                     sys.decompositionlist(decomposition_key) = [measure, err_lqr, err_compute];
                 end
                 return;
             end
             K(leaf_nodes{ii, 1}, logical(leaf_nodes{ii, 2})) = K_;
-
+            
             NS = sys.num_points(logical(leaf_nodes{ii,2}));
             NA = sys.num_action_samples(leaf_nodes{ii,1});
             M = sys.max_iter;
@@ -188,9 +200,9 @@ else
             subpolicy_update_compute = prod(NS) * prod(NA) ...
                                        * (sample_complexity + step_complexity ...
                                           + interp_complexity + action_update_complexity);
-
+                                      
             err_compute = err_compute + M * (subpolicy_eval_compute + subpolicy_update_compute);
-
+            
             parent_input = leaf_nodes{ii, 5};
             parent_node_id = find(cellfun(@(x) isempty(setdiff(x, parent_input)) && isempty(setdiff(parent_input, x)),...
                                   action_tree(:, 1)));
@@ -199,7 +211,10 @@ else
 
             assert(all(~(parent_node{2} .* leaf_nodes{ii, 2})), 'Invalid state overlap');
             parent_node{2} = parent_node{2} + leaf_nodes{ii, 2};
-            parent_node{3} = parent_node{3} + leaf_nodes{ii, 3};
+            parent_node{3}(leaf_nodes{ii,1}) = leaf_nodes{ii, 3}(leaf_nodes{ii,1});
+            for cch=1:1:size(leaf_nodes{ii,6}, 1)
+                parent_node{3}(leaf_nodes{ii,6}{cch}) = leaf_nodes{ii, 3}(leaf_nodes{ii,6}{cch});
+            end
             parent_node{4} = parent_node{4} + K;
 
             % Find and delete the leaf_node in the list of children
@@ -209,6 +224,7 @@ else
                             children_list);
             children_list(childID) = [];
             parent_node{end} = children_list;
+            parent_node{6} = cat(1, parent_node{6}, leaf_nodes{ii,1}, leaf_nodes{ii,6});
 
             action_tree(parent_node_id, :) = parent_node;
         end

@@ -5,6 +5,8 @@ function [xoverKids] = crossoverfunction(sys, parents, options, nvars, FitnessFc
      % Action tree of one and state assignment of the other
      % Valid crossover requires same input couplings in both parents
      
+     pparents = reshape(thisPopulation(parents, 1:(2*sys.U_DIMS))', ...
+                        sys.U_DIMS, 2, length(parents));
      sparents = reshape(thisPopulation(parents, (2*sys.U_DIMS + 1):end)', ...
                         sys.U_DIMS, sys.X_DIMS, length(parents));
      MAX_ACTIONSET_VALUE = ((sys.U_DIMS + 1).^linspace(0, sys.U_DIMS-1, sys.U_DIMS))*linspace(1, sys.U_DIMS, sys.U_DIMS)' + 1;
@@ -14,7 +16,8 @@ function [xoverKids] = crossoverfunction(sys, parents, options, nvars, FitnessFc
          action_coupled = [];
          while(sum(action) > 0)
              a1 = find(action, 1);
-             a1coupled = find(all(sparents(a1,:,ii) == sparents(:,:,ii), 2));
+             a1coupled = find(all(sparents(a1,:,ii) == sparents(:,:,ii), 2) ...
+                              & all(pparents(a1,:,ii) == pparents(:,:,ii), 2));
              action(a1coupled) = 0;
              a1coupled = ((sys.U_DIMS+1).^linspace(0, length(a1coupled)-1, length(a1coupled)))*a1coupled;
              action_coupled = [action_coupled; a1coupled];
@@ -115,19 +118,27 @@ function [xoverKids] = crossoverfunction(sys, parents, options, nvars, FitnessFc
 %          if (are_compatible)
              [c1, ceq1] = constraints(p1, s2_);
              [c2, ceq2] = constraints(p2, s1_);
-             if (~(all(c1 <= 0) && all(ceq1==0)))
-                 disp('Problem in 1');
+             try
+                 assert(all(c1 <= 0) && all(ceq1==0) ...
+                        && all(c2 <= 0) && all(ceq2==0), ...
+                        'Invalid crossover');
+             catch
+                 disp('check!');
              end
-             if (~(all(c2 <= 0) && all(ceq2==0)))
-                 disp('Problem in 2');
-             end
+             
               xoverKids = [xoverKids; 
                            reshape(p1, 1, 2*sys.U_DIMS), reshape(s2_, 1, sys.U_DIMS*sys.X_DIMS);
                            reshape(p2, 1, 2*sys.U_DIMS), reshape(s1_, 1, sys.U_DIMS*sys.X_DIMS)];
 %          end
-        if (2*size(xoverKids, 1) >= length(parents))
-            break;
-        end
      end
-     xoverKids = xoverKids(1:round(0.5*length(parents)), :);
+     num_xoverKids_desired = round(options.CrossoverFraction...
+                                   *(size(thisPopulation, 1) - options.EliteCount));
+     
+     if (size(xoverKids, 1) < num_xoverKids_desired)
+         deficit = num_xoverKids_desired - size(xoverKids, 1);
+         xoverKids = [xoverKids; thisPopulation(parents(1:deficit), :)];
+     else
+         xoverKids = xoverKids(1:num_xoverKids_desired, :);
+     end
+     
 end

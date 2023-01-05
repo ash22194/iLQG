@@ -84,7 +84,9 @@ function mutationChildren = mutationfunctionstatemasked(sys, parents, options, n
     for ii=1:1:size(action_mutation_children, 1)
         current_child = action_mutation_children(ii, :);
         p = reshape(current_child(1:2*sys.U_DIMS), sys.U_DIMS, 2);
+        p_orig = p;
         s = reshape(current_child((2*sys.U_DIMS + 1):end), sys.U_DIMS, sys.X_DIMS);
+%         s_orig = s;
         
         if (rand() < 0.5)
             % 1) Move subtree
@@ -124,10 +126,19 @@ function mutationChildren = mutationfunctionstatemasked(sys, parents, options, n
                     else
                         new_parent_coupled = new_parent;
                     end
-
-                    new_parent_children = linspace(1, sys.U_DIMS, sys.U_DIMS);
-                    new_parent_children(p(any(p(:,1) == new_parent_coupled', 2), 2)) = [];
                     
+                    parent_children = find(any(p(:,1) == new_parent_coupled', 2));
+                    if (~isempty(parent_children))
+                        assert(sum(any(new_parent_coupled == p(parent_children, 1)', 2))<=1, ...
+                               'Only one of the coupled inputs is the assigned parent');
+                        new_parent = p(parent_children(1), 1);
+                    end
+                    new_parent_children = linspace(1, sys.U_DIMS, sys.U_DIMS);
+                    try
+                        new_parent_children(p(parent_children, 2)) = [];
+                    catch
+                        disp('Check!');
+                    end
                     if (~isempty(new_parent_children))
                         p(aroot_coupled, 1) = new_parent;
                         p(aroot_coupled, 2) = new_parent_children(1);
@@ -177,7 +188,8 @@ function mutationChildren = mutationfunctionstatemasked(sys, parents, options, n
                 num_children_decouplea1 = 0;
                 while (~isempty(a1childnodes))
                     a1child = a1childnodes(1);
-                    a1childcoupled = find(all(s(a1child,:)==s, 2));
+%                     a1childcoupled = find(all(s(a1child,:)==s, 2));
+                    a1childcoupled = find(all(p_orig(a1child,:)==p_orig, 2));
                     if (rand() > 0.5)
                         num_children_a1 = num_children_a1 + 1;
                         p(a1childcoupled, 1) = min(a1coupled);
@@ -248,11 +260,26 @@ function mutationChildren = mutationfunctionstatemasked(sys, parents, options, n
                     assert(length(a2children_parent) <= 1, 'a2children - Parent must be the same!');
                     
                     if (~isempty(a2children_parent))
-                        a2children = (p(:,1) == a2children_parent);
+                        a2children = find(p(:,1) == a2children_parent);
                         if (~isempty(a1children_parent))
+                            child_ids = 1:1:sys.U_DIMS;
+                            while(~isempty(a2children))
+                                a2c = a2children(1);
+                                a2c_coupled = find(all(p_orig(a2c,:)==p_orig, 2));
+                                p(a2c_coupled, 2) = child_ids(1);
+                                a2children(any(a2children==a2c_coupled', 2)) = [];
+                                child_ids(1) = [];
+                            end
+                            a1children = find(p(:,1) == a1children_parent);
+                            while(~isempty(a1children))
+                                a1c = a1children(1);
+                                a1c_coupled = find(all(p_orig(a1c,:)==p_orig, 2));
+                                p(a1c_coupled, 2) = child_ids(1);
+                                a1children(any(a1children==a1c_coupled', 2)) = [];
+                                child_ids(1) = [];
+                            end
+                            a2children = (p(:,1) == a2children_parent);
                             p(a2children, 1) = a1children_parent;
-                            a1children = (p(:,1) == a1children_parent);
-                            p(a2children, 2) = p(a2children, 2) + max(p(a1children, 2));
                         end
                     end
                     
