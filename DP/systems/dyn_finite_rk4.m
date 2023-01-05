@@ -1,4 +1,4 @@
-function out = dyn_finite_rk4(sys, x, u, dt)
+function [out, k1, k2, k3, k4] = dyn_finite_rk4(sys, x, u, dt)
 
 X_DIMS      = sys.X_DIMS;
 X_DIMS_FREE = sys.X_DIMS_FREE;

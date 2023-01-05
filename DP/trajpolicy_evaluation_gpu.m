@@ -105,9 +105,7 @@ function [value, info] = trajpolicy_evaluation_gpu(sys, Op, sub_policies)
     time_total = 0;
     
     time_start = tic;
-    disp('Step!');
     x_ = dyn_finite_rk4_mex(sys, x, u, dt); % Next state after a step
-    disp('Update Value Function');
     while ((max(abs(G_ - G), [], 'all') > gtol) && (policy_iter < max_iter))
         % Iterate to estimate value function
         tic;

@@ -32,7 +32,7 @@ function [policy, info] = get_dp_solution(sys, Op, sub_policies)
         save_every = Op.save_every; 
     else 
         save_every = max_iter / 10; 
-    end;
+    end
     reuse_policy   = isfield(Op, 'reuse_policy') && (Op.reuse_policy) && (isfile(save_file));
     
 %% Initialize 

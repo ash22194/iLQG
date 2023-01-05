@@ -11,6 +11,14 @@ addpath('../iLQG_boxQP/iLQG utilities/decomposition_count');
 addpath('utils');
 load(strcat('../MCTS/data/', system_name, 'System.mat'), 'sys');
 
+if (strcmp(system_name, 'biped2d'))
+%     sys.num_action_samples = [9,9,3,3];
+    sys.num_action_samples = [5,5,2,2];
+    sys.max_iter = 2000;
+    sys.state_bounds(1,:) = [0.92, 1];
+    sys.state_bounds(2,:) = [0.2, 0.3] + pi/2;
+end
+
 sys.X_DIMS_MASKED = eye(sys.X_DIMS);
 % Add function to compute linearized dynamics
 if (~isfield(sys, 'fxfu_func'))
@@ -21,20 +29,22 @@ if (~isfield(sys, 'fxfu_func'))
 end
 
 % Add function to compute LQR metric
-if (~isfield(sys, 'err_lqr_func'))
+% if (~isfield(sys, 'err_lqr_func'))
     sys.lambda_ = (1 - sys.gamma_) / sys.dt;
     [~, S_j, ~] = lqr(sys.A - (sys.lambda_ / 2) * eye(size(sys.A,1)), sys.B, sys.Q, sys.R, zeros(size(sys.B)));
-    sys.S = sym('S', [sys.X_DIMS, sys.X_DIMS]);
-    sys.S = tril(sys.S,0) + tril(sys.S,-1).';
-    sys.a = sym('a', [sys.X_DIMS, 1]);
-    sys.b = sym('b', [sys.X_DIMS, 1]);
-    err_lqr = sys.x.'*sys.S*sys.x - sys.x.'*S_j*sys.x;
-    for ii=1:1:sys.X_DIMS
-        err_lqr = int(err_lqr, sys.x(ii), [sys.a(ii), sys.b(ii)]);
-    end
-    sys.err_lqr_func = matlabFunction(err_lqr, 'Vars', {sys.S, sys.a, sys.b});
-    sys.da = prod(sys.state_bounds(:,2) - sys.state_bounds(:,1), 1);
-end
+%     sys.S = sym('S', [sys.X_DIMS, sys.X_DIMS]);
+%     sys.S = tril(sys.S,0) + tril(sys.S,-1).';
+%     sys.a = sym('a', [sys.X_DIMS, 1]);
+%     sys.b = sym('b', [sys.X_DIMS, 1]);
+%     err_lqr = sys.x.'*sys.S*sys.x - sys.x.'*S_j*sys.x;
+%     for ii=1:1:sys.X_DIMS
+%         err_lqr = int(err_lqr, sys.x(ii), [sys.a(ii), sys.b(ii)]);
+%     end
+%     sys.err_lqr_func = matlabFunction(err_lqr, 'Vars', {sys.S, sys.a, sys.b});
+    sys.err_lqr_func = @(S,a,b) definite_integral_parabola(S-S_j,a,b);
+%     sys.da = prod(sys.state_bounds(:,2) - sys.state_bounds(:,1), 1);
+    sys.da = definite_integral_parabola(S_j, sys.state_bounds(:,1)-sys.l_point, sys.state_bounds(:,2)-sys.l_point);
+% end
 sys.measure_func = @(err_lqr, err_compute) (1 - exp(-err_lqr)) .* err_compute;
 
 %% Enumerate Decompositions
@@ -42,7 +52,7 @@ number_of_decompositions = calcAllDecompositions(size(sys.X_DIMS_MASKED, 1), sys
 policy_decompositions = cell(number_of_decompositions, 5);
 
 decomposition_count = 0;
-
+tic;
 for rr=2:1:sys.U_DIMS
 	% Number of nodes in input-tree
 
@@ -117,10 +127,12 @@ for rr=2:1:sys.U_DIMS
                     decomposition_count = decomposition_count + 1;
                     policy_decompositions{decomposition_count, 1} = p;
                     policy_decompositions{decomposition_count, 2} = s;
-                    policy_decompositions{decomposition_count, 3} = computeLQRMeasure(sys, p, s);
-                    policy_decompositions{decomposition_count, 4} = computeComplexityEstimates(sys, p, s);
-                    policy_decompositions{decomposition_count, 5} = computeJointMeasure(sys, p, s);
-                    fprintf('Decomposition : %d\n', decomposition_count);
+%                     policy_decompositions{decomposition_count, 3} = computeLQRMeasure(sys, p, s);
+%                     policy_decompositions{decomposition_count, 4} = computeComplexityEstimates(sys, p, s);
+                    [policy_decompositions{decomposition_count, 5}, ...
+                     policy_decompositions{decomposition_count, 3}, ...
+                     policy_decompositions{decomposition_count, 4}] = computeJointMeasure(sys, p, s);
+%                     fprintf('Decomposition : %d\n', decomposition_count);
                 end
             end
             
@@ -161,10 +173,12 @@ for rr=2:1:sys.U_DIMS
 								decomposition_count = decomposition_count + 1;
 								policy_decompositions{decomposition_count, 1} = p;
 								policy_decompositions{decomposition_count, 2} = s;
-								policy_decompositions{decomposition_count, 3} = computeLQRMeasure(sys, p, s);
-								policy_decompositions{decomposition_count, 4} = computeComplexityEstimates(sys, p, s);
-								policy_decompositions{decomposition_count, 5} = computeJointMeasure(sys, p, s);
-                                fprintf('Decomposition : %d\n', decomposition_count);
+% 								policy_decompositions{decomposition_count, 3} = computeLQRMeasure(sys, p, s);
+% 								policy_decompositions{decomposition_count, 4} = computeComplexityEstimates(sys, p, s);
+								[policy_decompositions{decomposition_count, 5}, ...
+                                 policy_decompositions{decomposition_count, 3}, ...
+                                 policy_decompositions{decomposition_count, 4}] = computeJointMeasure(sys, p, s);
+%                                 fprintf('Decomposition : %d\n', decomposition_count);
 							end
 						end
 		        	end
@@ -173,4 +187,4 @@ for rr=2:1:sys.U_DIMS
 		end
 	end
 end
-
+time_total = toc;

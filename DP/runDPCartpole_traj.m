@@ -45,6 +45,7 @@ sys.lims = [-9, 9;
             -9, 9];
 
 sys.l_point = [0; 0; pi; 0];
+
 sys.goal = sys.l_point;
 % Trajectory to track
 traj_points = 60;
@@ -111,6 +112,7 @@ sys.dt = 1e-3;
 
 Op.num_points = [25, 25, 25, 25];
 % Op.num_points = [21, 21, 21, 21];
+
 Op.num_action_samples = [12, 12];
 Op.max_iter = 1000;
 Op.max_policy_iter = 100;
