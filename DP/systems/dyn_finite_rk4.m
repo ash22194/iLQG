@@ -1,5 +1,6 @@
-function out = dyn_finite_rk4(sys, x, u, dt)
+function [out, k1, k2, k3, k4] = dyn_finite_rk4(sys, x, u, dt)
 
+X_DIMS      = sys.X_DIMS;
 X_DIMS_FREE = sys.X_DIMS_FREE;
 limits      = sys.limits;
 
@@ -33,6 +34,10 @@ for xxi=1:1:length(X_DIMS_FREE)
     
     % Enforce state bounds!!
     out{xx} = max(limits(xx, 1), min(limits(xx, 2), out{xx}));
+end
+
+if (length(x)==(X_DIMS+1))
+    out{X_DIMS+1} = min(x{X_DIMS+1} + dt, sys.limits_t(2));
 end
 
 end

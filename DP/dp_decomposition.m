@@ -75,7 +75,7 @@ function [policies, value, info] = dp_decomposition(sys, Op, p, s)
             	[value, info] = policy_evaluation(sys_, Op, sub_policies);
             
             	policies = cell(sys.U_DIMS, 1);
-           	info.time_policy_eval = info.time_total;
+                info.time_policy_eval = info.time_total;
             	info.time_policy_update = 0;
             	for uu=1:1:size(sub_policies, 1)
                 	info.time_total = info.time_total + sub_policies{uu,4}.time_total;
