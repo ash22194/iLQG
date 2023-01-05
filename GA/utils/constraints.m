@@ -43,6 +43,7 @@ end
 c = [c; 1 - sum(s, 1)'];
 
 coupled_inputs = nchoosek(input_ids, 2);
+% couples = logical(eye(m));
 for ii=1:1:size(coupled_inputs, 1)
     % Coupled inputs must have the same state assignment
     input1 = coupled_inputs(ii,1);
@@ -58,6 +59,10 @@ for ii=1:1:size(coupled_inputs, 1)
         input1 = p(input1,1);
         input2 = p(input2,1);
     end
+   
+%     couples(coupled_inputs(ii,1), coupled_inputs(ii,1)*(~are_coupled) + coupled_inputs(ii,2)*(are_coupled)) = true;
+%     couples(coupled_inputs(ii,2), coupled_inputs(ii,2)*(~are_coupled) + coupled_inputs(ii,1)*(are_coupled)) = true;
+    
     complete_state_overlap = min(1, sum(abs(s(coupled_inputs(ii,1),:) - s(coupled_inputs(ii,2),:))));
     
     % Inputs that are not coupled must have disjont state assignment
@@ -66,6 +71,17 @@ for ii=1:1:size(coupled_inputs, 1)
     c = [c; are_coupled*complete_state_overlap; -are_coupled*complete_state_overlap;
              (1-are_coupled)*no_state_overlap; (are_coupled-1)*no_state_overlap];
 end
+
+% Leaf nodes must have non-empty state assignment (what is a good way to enforce?)
+% uncoupled_inputs = true(m,1);
+% ii = 1;
+% while (~isempty(ii))
+%     uncoupled_inputs(couples(ii,:)) = false;
+%     coups = find(couples(ii,:));
+%     is_leaf = ~any(p(:,1) == coups, 'all');
+%     c = [c; is_leaf*(1 - sum(s(coups(1), :)))];
+%     ii = find(uncoupled_inputs, 1);
+% end
 
 % Constraint to avoid jointly optimizing the inputs
 c = [c; sum(s, 'all') - (m*n-1)];
