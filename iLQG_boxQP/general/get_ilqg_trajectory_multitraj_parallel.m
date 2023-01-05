@@ -14,79 +14,36 @@ function [XFinal, UFinal, X, k, K, sub_trajectories_close, ...
     Costinit = zeros(1, size(starts, 2));
     
     Mdl = cellfun(@(x) KDTreeSearcher(x'), sub_policies_DDP(:,6), 'UniformOutput', false);
-    sub_policies_DDP_ = cell(size(sub_policies_DDP));
-    sub_policies_DDP_(:,1:2) = sub_policies_DDP(:,1:2);
     
-    if (isfield(sys, 'u0init') && (sys.u0init))
+    if (isfield(sys, 'u0init') && (sys.u0init==1))
         for kk=1:1:size(starts,2)
-            Xinit(:,1,kk) = starts(:,kk);
-            discount = 1;
-            for ii=1:1:NUM_CTRL
-                Uinit(:,ii,kk) = u0;
-%                 Xinit(:,ii+1,kk) = dyn_subs_finite2(sys, Xinit(:,ii,kk), Uinit(:,ii,kk), sub_policies_LQR, sys.dt);
-                
-                for jj=1:1:size(sub_policies_DDP, 1)
-                    closest_x = knnsearch(Mdl{jj}, Xinit(sub_policies_DDP{jj,2},ii,kk)');
-                    sub_policies_DDP_{jj, 3} = sub_policies_DDP{jj, 3}(:, closest_x);
-                    sub_policies_DDP_{jj, 4} = sub_policies_DDP{jj, 4}(:,:, closest_x);
-                    sub_policies_DDP_{jj, 5} = sub_policies_DDP{jj, 5}(:, closest_x);
-                end
-                Xinit(:,ii+1,kk) = dyn_subs_finite2(sys, Xinit(:,ii,kk), Uinit(:,ii,kk), sub_policies_DDP_, sys.dt);
-                if (any(isnan(Uinit(:,ii,kk))) || any(isnan(Xinit(:,ii,kk))))
-                    disp('Check X, U FFull');
-                end
-%                 Costinit(kk) = Costinit(kk) + discount*cost_subs(sys, Xinit(:,ii,kk), Uinit(:,ii,kk), sub_policies_LQR)*sys.dt;
-                
-                Costinit(kk) = Costinit(kk) + discount*cost_subs(sys, Xinit(:,ii,kk), Uinit(:,ii,kk), sub_policies_DDP_)*sys.dt;
-                discount = discount*sys.gamma_;
-            end
-%             Costinit(kk) = Costinit(kk) + discount*cost_subs(sys, Xinit(:,NUM_CTRL+1,kk), u0, sub_policies_LQR)*sys.dt;
-            
-            for jj=1:1:size(sub_policies_DDP, 1)
-                closest_x = knnsearch(Mdl{jj}, Xinit(sub_policies_DDP{jj,2},NUM_CTRL+1,kk)');
-                sub_policies_DDP_{jj, 3} = sub_policies_DDP{jj, 3}(:, closest_x);
-                sub_policies_DDP_{jj, 4} = sub_policies_DDP{jj, 4}(:,:, closest_x);
-                sub_policies_DDP_{jj, 5} = sub_policies_DDP{jj, 5}(:, closest_x);
-            end
-            Costinit(kk) = Costinit(kk) + discount*cost_subs(sys, Xinit(:,NUM_CTRL+1,kk), u0, sub_policies_DDP_)*sys.dt;
+            [Xinit(:,:,kk), Uinit(:,1:NUM_CTRL,kk), Costinit(kk)] = rollout_trajectory(sys, NUM_CTRL, starts(:,kk), ...
+                                               u0, zeros(length(u0), length(sys.X_DIMS_FREE)), sub_policies_DDP, Mdl);
+        end
+    elseif (isfield(sys, 'u0init') && (sys.u0init==0))
+        for kk=1:1:size(starts,2)
+            [Xinit(:,:,kk), Uinit(:,1:NUM_CTRL,kk), Costinit(kk)] = rollout_trajectory(sys, NUM_CTRL, starts(:,kk), ...
+                                                                                    u0, K_LQR, sub_policies_DDP, Mdl);
         end
     else
-        for kk=1:1:size(starts,2)
-            Xinit(:,1,kk) = starts(:,kk);
-            discount = 1;
-            for ii=1:1:NUM_CTRL
-                Uinit(:,ii,kk) = min(max(u0 + K_LQR*(Xinit(:,ii,kk) - l_point), ...
-                                      lims(:,1)), ...
-                                  lims(:,2));
-%                 Xinit(:,ii+1,kk) = dyn_subs_finite2(sys, Xinit(:,ii,kk), Uinit(:,ii,kk), sub_policies_LQR, sys.dt);
-                
-                for jj=1:1:size(sub_policies_DDP, 1)
-                    closest_x = knnsearch(Mdl{jj}, Xinit(sub_policies_DDP{jj,2},ii,kk)');
-                    sub_policies_DDP_{jj, 3} = sub_policies_DDP{jj, 3}(:, closest_x);
-                    sub_policies_DDP_{jj, 4} = sub_policies_DDP{jj, 4}(:,:, closest_x);
-                    sub_policies_DDP_{jj, 5} = sub_policies_DDP{jj, 5}(:, closest_x);
-                end
-                Xinit(:,ii+1,kk) = dyn_subs_finite2(sys, Xinit(:,ii,kk), Uinit(:,ii,kk), sub_policies_DDP_, sys.dt);
-                if (any(isnan(Uinit(:,ii,kk))) || any(isnan(Xinit(:,ii,kk))))
-                    disp('Check X, U FFull');
-                end
-%                 Costinit(kk) = Costinit(kk) + discount*cost_subs(sys, Xinit(:,ii,kk), Uinit(:,ii,kk), sub_policies_LQR)*sys.dt;
-                
-                Costinit(kk) = Costinit(kk) + discount*cost_subs(sys, Xinit(:,ii,kk), Uinit(:,ii,kk), sub_policies_DDP_)*sys.dt;
-                discount = discount*sys.gamma_;
+        % Pick the least cost initial trajectory
+        parfor kk=1:1:size(starts,2)
+            [Xinit0, Uinit0, Costinit0] = rollout_trajectory(sys, NUM_CTRL, starts(:,kk), ...
+                                               u0, zeros(length(u0), length(sys.X_DIMS_FREE)), sub_policies_DDP, Mdl);
+            [XinitLQR, UinitLQR, CostinitLQR] = rollout_trajectory(sys, NUM_CTRL, starts(:,kk), ...
+                                               u0, K_LQR, sub_policies_DDP, Mdl);
+            if (Costinit0 < CostinitLQR)
+                Xinit(:,:,kk) = Xinit0;
+                Uinit(:,:,kk) = Uinit0;
+                Costinit(kk) = Costinit0;
+            else
+                Xinit(:,:,kk) = XinitLQR;
+                Uinit(:,:,kk) = UinitLQR;
+                Costinit(kk) = CostinitLQR;
             end
-%             Costinit(kk) = Costinit(kk) + discount*cost_subs(sys, Xinit(:,NUM_CTRL+1,kk), u0, sub_policies_LQR)*sys.dt;
-            
-            for jj=1:1:size(sub_policies_DDP, 1)
-                closest_x = knnsearch(Mdl{jj}, Xinit(sub_policies_DDP{jj,2},NUM_CTRL+1,kk)');
-                sub_policies_DDP_{jj, 3} = sub_policies_DDP{jj, 3}(:, closest_x);
-                sub_policies_DDP_{jj, 4} = sub_policies_DDP{jj, 4}(:,:, closest_x);
-                sub_policies_DDP_{jj, 5} = sub_policies_DDP{jj, 5}(:, closest_x);
-            end
-            Costinit(kk) = Costinit(kk) + discount*cost_subs(sys, Xinit(:,NUM_CTRL+1,kk), u0, sub_policies_DDP_)*sys.dt;
         end
     end
-    
+
 %%  Compute DDP Trajectory
     
     ilqg_system = @(x, u, sub_policies_, i) ...
@@ -104,7 +61,7 @@ function [XFinal, UFinal, X, k, K, sub_trajectories_close, ...
     sub_trajectories_close_ = cell(size(starts, 2), 1);
     
     parfor kk=1:1:size(starts, 2)
-        
+        disp(strcat(num2str(kk),') Final init point : ', sprintf('%.4f ', Xinit(:, end, kk))));
 %         Op.cost = Costinit(kk);
         tic;
         [XFinal_, X(:,:,kk), UFinal(:,:,kk), k(:,:,kk), K(:,:,:,kk), ...
@@ -144,4 +101,40 @@ function [XFinal, UFinal, X, k, K, sub_trajectories_close, ...
     UFinal = reshape(UFinal, size(UFinal,1), size(UFinal,2)*size(UFinal,3));
     K = reshape(K, size(K,1), size(K,2), size(K,3)*size(K,4));
     
+end
+
+function [X, U, C] = rollout_trajectory(sys, NUM_CTRL, start, u0, K0, sub_policies, Mdl)
+    X = nan(length(sys.X_DIMS_FREE), NUM_CTRL+1);
+    U = nan(length(sys.U_DIMS_FREE), NUM_CTRL+1);
+    C = 0;
+    sub_policies_ = cell(size(sub_policies));
+    sub_policies_(:,1:2) = sub_policies(:,1:2);
+
+    X(:, 1) = start;
+    discount = 1;
+    for ii=1:1:NUM_CTRL
+        U(:,ii) = u0 + K0*(X(:,ii) - sys.l_point(sys.X_DIMS_FREE));
+
+        for jj=1:1:size(sub_policies, 1)
+            closest_x = knnsearch(Mdl{jj}, X(sub_policies{jj,2}, ii)');
+            sub_policies_{jj, 3} = sub_policies{jj, 3}(:, closest_x);
+            sub_policies_{jj, 4} = sub_policies{jj, 4}(:,:, closest_x);
+            sub_policies_{jj, 5} = sub_policies{jj, 5}(:, closest_x);
+        end
+
+        X(:,ii+1) = dyn_subs_finite2(sys, X(:,ii), U(:,ii), sub_policies_, sys.dt);
+        if (any(isnan(U(:,ii))) || any(isnan(X(:,ii))))
+            disp('Check X, U FFull');
+        end
+        
+        C = C + discount*cost_subs(sys, X(:,ii), U(:,ii), sub_policies_)*sys.dt;
+        discount = discount*sys.gamma_;
+    end
+    for jj=1:1:size(sub_policies, 1)
+        closest_x = knnsearch(Mdl{jj}, X(sub_policies{jj,2}, NUM_CTRL+1)');
+        sub_policies_{jj, 3} = sub_policies{jj, 3}(:, closest_x);
+        sub_policies_{jj, 4} = sub_policies{jj, 4}(:,:, closest_x);
+        sub_policies_{jj, 5} = sub_policies{jj, 5}(:, closest_x);
+    end
+    C = C + discount*cost_subs(sys, X(:,NUM_CTRL+1), u0, sub_policies_)*sys.dt;
 end
