@@ -291,6 +291,6 @@ nlinear = sprintf('calc_average%d',n);
 k = parallel.gpu.CUDAKernel(strcat('cuda/', nlinear, '.ptx'), ...
                             strcat('cuda/', nlinear, '.cu'), ...
                             nlinear);
-k.ThreadBlockSize = 896;
+k.ThreadBlockSize = 768;
 k.GridSize = 1024;
 end
