@@ -74,12 +74,12 @@ function [policies, value, info] = dp_decomposition_gpu(sys, Op, p, s)
             	sub_policies = leaf_nodes{1, 3};
 
                 disp('Final evaluation');
-            	[value, info] = policy_evaluation_gpu(sys_, Op, sub_policies);
-                value = gather(value);
-                % value = 0;
-                % info.time_policy_eval = 0;
-                % info.time_policy_update = 0;
-                % info.time_total = 0;
+            	% [value, info] = policy_evaluation_gpu(sys_, Op, sub_policies);
+                % value = gather(value);
+                value = 0;
+                info.time_policy_eval = 0;
+                info.time_policy_update = 0;
+                info.time_total = 0;
                 for ss=1:1:size(sub_policies, 1)
                     sub_policies{ss, 3} = cellfun(@(x) gather(x), sub_policies{ss, 3}, 'UniformOutput', false);
                     sub_policies{ss, 4}.state_grid = cellfun(@(x) gather(x), sub_policies{ss, 4}.state_grid, 'UniformOutput', false);
@@ -108,8 +108,8 @@ function [policies, value, info] = dp_decomposition_gpu(sys, Op, p, s)
                 	% policies(U_SUBDIM) = cellfun(@(x) repmat(reshape(x, subpolicy_size), subpolicy_newsize), sub_policies{uu,3}, 'UniformOutput', false);
             	end
                 disp('Saving final');
-            	info = rmfield(info, 'state_grid');
-            	save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'policies', 'value', 'info', 'p', 's', '-v7.3', '-nocompression');
+            	% info = rmfield(info, 'state_grid');
+            	save(strcat(save_dir, '/final.mat'), 'sys', 'Op', 'action_tree', 'policies', 'value', 'info', 'p', 's', '-v7.3', '-nocompression');
             	return;
             end
         end
