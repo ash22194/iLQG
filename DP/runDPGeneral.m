@@ -22,7 +22,7 @@ restoredefaultpath();
 addpath('systems');
 addpath(strcat('systems/', system_name));
 
-decompositions = load(strcat('../iLQG_boxQP/data/multitraj/', system_name, '_pareto_repeat/summary.mat'));
+decompositions = load(strcat('../iLQG_boxQP/data/multitraj/', system_name, '_pareto/summary.mat'));
 sys = decompositions.sys;
 sys.name = strcat(system_name, '_pareto');
 
