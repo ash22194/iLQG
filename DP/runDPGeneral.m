@@ -1,6 +1,7 @@
 clear;
 close all;
 clc;
+
 num_gpus = gpuDeviceCount();
 gpu_id = 0;
 max_avail_memory = 0;
