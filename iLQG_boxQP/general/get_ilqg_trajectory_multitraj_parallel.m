@@ -61,7 +61,6 @@ function [XFinal, UFinal, X, k, K, sub_trajectories_close, ...
     sub_trajectories_close_ = cell(size(starts, 2), 1);
     
     parfor kk=1:1:size(starts, 2)
-        disp(strcat(num2str(kk),') Final init point : ', sprintf('%.4f ', Xinit(:, end, kk))));
 %         Op.cost = Costinit(kk);
         tic;
         [XFinal_, X(:,:,kk), UFinal(:,:,kk), k(:,:,kk), K(:,:,:,kk), ...
