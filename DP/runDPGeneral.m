@@ -1,28 +1,29 @@
 clear;
 close all;
 clc;
-% num_gpus = gpuDeviceCount();
-% gpu_id = 0;
-% max_avail_memory = 0;
-% for gg=1:1:num_gpus
-%     g = gpuDevice(gg);
-%     if (g.AvailableMemory > max_avail_memory)
-%         gpu_id = gg;
-%         max_avail_memory = g.AvailableMemory;
-%     end
-% end
-% g = gpuDevice(gpu_id);
-% reset(g);
-% fprintf('Using GPU : %d\n', gpu_id);
+
+num_gpus = gpuDeviceCount();
+gpu_id = 0;
+max_avail_memory = 0;
+for gg=1:1:num_gpus
+    g = gpuDevice(gg);
+    if (g.AvailableMemory > max_avail_memory)
+        gpu_id = gg;
+        max_avail_memory = g.AvailableMemory;
+    end
+end
+g = gpuDevice(gpu_id);
+reset(g);
+fprintf('Using GPU : %d\n', gpu_id);
 
 %% 
 
-system_name = 'manipulator2dof';
+system_name = 'cartpole';
 restoredefaultpath();
 addpath('systems');
 addpath(strcat('systems/', system_name));
 
-decompositions = load(strcat('../GA/data/', system_name, 'AllPossibleDecompositions.mat'));
+decompositions = load(strcat('../iLQG_boxQP/data/multitraj/', system_name, '_pareto/summary.mat'));
 sys = decompositions.sys;
 sys.name = strcat(system_name, '_pareto');
 
@@ -37,7 +38,7 @@ Op.save_dir = 'data';
 Op.reuse_policy = true;
 
 if (size(decompositions.policy_decompositions, 1) > 44)
-    policy_decompositions = decompositions.policy_decompositions_pareto;
+    policy_decompositions = decompositions.policy_decompositions_pareto_front;
 else
     policy_decompositions = decompositions.policy_decompositions;
 end
@@ -52,7 +53,8 @@ for dd=1:1:size(policy_decompositions, 1)
     sys.decomposition_id = dd;
     fprintf('Decomposition : %d / %d\n', dd, size(policy_decompositions, 1));
     
-    [policies{dd,1}, value{dd,1}, info{dd,1}] = dp_decomposition(sys, Op, p, s);
+    [policies{dd,1}, value{dd,1}, info{dd,1}] = dp_decomposition_gpu(sys, Op, p, s);
+    info{dd,1} = rmfield(info{dd,1}, 'state_grid');
 end
 
 %% Joint 
@@ -61,9 +63,11 @@ p_joint = [zeros(sys.U_DIMS, 1), ones(sys.U_DIMS, 1)];
 s_joint = ones(sys.U_DIMS, sys.X_DIMS);
 sys.decomposition_id = 0;
 
-[policies_joint, value_joint, info_joint] = dp_decomposition(sys, Op, p_joint, s_joint);
+fprintf('Joint\n');
+[policies_joint, value_joint, info_joint] = dp_decomposition_gpu(sys, Op, p_joint, s_joint);
+info_joint = rmfield(info_joint, 'state_grid');
 
-%% Compute Error
+% Compute Error
 % Find states within the bounds
 grid_points = cell(sys.X_DIMS, 1);
 for xx=1:1:sys.X_DIMS
@@ -73,8 +77,8 @@ end
 
 valid_points = true(size(grid_points{1}));
 for xx=1:1:sys.X_DIMS
-    valid_points = valid_points & ((grid_points <= sys.state_bounds(xx,2))...
-                                   & (grid_points >= sys.state_bounds(xx,1)));
+    valid_points = valid_points & ((grid_points{xx} <= sys.state_bounds(xx,2))...
+                                   & (grid_points{xx} >= sys.state_bounds(xx,1)));
 end
 
-err_dp = cellfun(@(x) mean(x(valid_points) - value_joint(valid_points), [], 'all'), value);
+err_dp = cellfun(@(x) mean(x(valid_points) - value_joint(valid_points), 'all'), value);

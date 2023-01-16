@@ -74,19 +74,23 @@ function [policies, value, info] = dp_decomposition_gpu(sys, Op, p, s)
             	sub_policies = leaf_nodes{1, 3};
 
                 disp('Final evaluation');
-            	[value, info] = policy_evaluation_gpu(sys_, Op, sub_policies);
-                value = gather(value);
-                % value = 0;
-                % info.time_policy_eval = 0;
-                % info.time_policy_update = 0;
-                % info.time_total = 0;
+                if (isfield(Op, 'evaluate_value') && Op.evaluate_value)
+                    [value, info] = policy_evaluation_gpu(sys_, Op, sub_policies);
+                    value = gather(value);
+                    info = rmfield(info, 'state_grid');
+                else
+                    value = 0;
+                    info.time_policy_eval = 0;
+                    info.time_policy_update = 0;
+                    info.time_total = 0;
+                end
                 for ss=1:1:size(sub_policies, 1)
                     sub_policies{ss, 3} = cellfun(@(x) gather(x), sub_policies{ss, 3}, 'UniformOutput', false);
                     sub_policies{ss, 4}.state_grid = cellfun(@(x) gather(x), sub_policies{ss, 4}.state_grid, 'UniformOutput', false);
                     sub_policies{ss, 4}.value = gather(sub_policies{ss, 4}.value);
                 end
-                
-            	% policies = cell(sys.U_DIMS, 1);
+
+                % policies = cell(sys.U_DIMS, 1);
                 policies = sub_policies;
            	    info.time_policy_eval = info.time_total;
             	info.time_policy_update = 0;
@@ -108,8 +112,7 @@ function [policies, value, info] = dp_decomposition_gpu(sys, Op, p, s)
                 	% policies(U_SUBDIM) = cellfun(@(x) repmat(reshape(x, subpolicy_size), subpolicy_newsize), sub_policies{uu,3}, 'UniformOutput', false);
             	end
                 disp('Saving final');
-            	info = rmfield(info, 'state_grid');
-            	save(strcat(save_dir, '/final.mat'), 'sys', 'action_tree', 'policies', 'value', 'info', 'p', 's', '-v7.3', '-nocompression');
+            	save(strcat(save_dir, '/final.mat'), 'sys', 'Op', 'action_tree', 'policies', 'value', 'info', 'p', 's', '-v7.3', '-nocompression');
             	return;
             end
         end
