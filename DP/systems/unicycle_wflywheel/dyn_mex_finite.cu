@@ -111,7 +111,7 @@ __global__ void dyn3_mex_continuous(double* const d_dPH, // outputs
     double th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
     ps = 0; ne = 0;
 
-    int index1 = (grid_size[0] > 1) ? index : 0;
+    // int index1 = (grid_size[0] > 1) ? index : 0;
     int index2 = (grid_size[1] > 1) ? index : 0;
     int index3 = (grid_size[2] > 1) ? index : 0;
     int index4 = (grid_size[3] > 1) ? index : 0;
@@ -699,7 +699,7 @@ __global__ void dyn3_mex_continuous(double* const d_dPH, // outputs
         d_dPH[index] = et1+et2+et3;
         
         index = index + num_threads;
-        index1 = (grid_size[0] > 1) ? index : 0;
+        // index1 = (grid_size[0] > 1) ? index : 0;
         index2 = (grid_size[1] > 1) ? index : 0;
         index3 = (grid_size[2] > 1) ? index : 0;
         index4 = (grid_size[3] > 1) ? index : 0;
@@ -731,7 +731,7 @@ __global__ void dyn4_mex_continuous(double* const d_dTH, // outputs
     double th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
     ps = 0; ne = 0;
 
-    int index1 = (grid_size[0] > 1) ? index : 0;
+    // int index1 = (grid_size[0] > 1) ? index : 0;
     int index2 = (grid_size[1] > 1) ? index : 0;
     int index3 = (grid_size[2] > 1) ? index : 0;
     int index4 = (grid_size[3] > 1) ? index : 0;
@@ -745,13 +745,13 @@ __global__ void dyn4_mex_continuous(double* const d_dTH, // outputs
 
     while (index < num_elements)
     {
-        th = TH[index1];
-        om = OM[index2];
-        dph = dPH[index3];
-        dth = dTH[index4];
-        dps = dPS[index5];
-        dom = dOM[index6];
-        dne = dNE[index7];
+        th = TH[index2];
+        om = OM[index3];
+        dph = dPH[index4];
+        dth = dTH[index5];
+        dps = dPS[index6];
+        dom = dOM[index7];
+        dne = dNE[index8];
 
         Tomega = nw*in1[uindex1];
         Tneta = nt*in2[uindex2];
@@ -1319,7 +1319,7 @@ __global__ void dyn4_mex_continuous(double* const d_dTH, // outputs
         d_dTH[index] = et4+et5+et6;
         
         index = index + num_threads;
-        index1 = (grid_size[0] > 1) ? index : 0;
+        // index1 = (grid_size[0] > 1) ? index : 0;
         index2 = (grid_size[1] > 1) ? index : 0;
         index3 = (grid_size[2] > 1) ? index : 0;
         index4 = (grid_size[3] > 1) ? index : 0;
@@ -1351,7 +1351,7 @@ __global__ void dyn5_mex_continuous(double* const d_dPS, // outputs
     double th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
     ps = 0; ne = 0;
 
-    int index1 = (grid_size[0] > 1) ? index : 0;
+    // int index1 = (grid_size[0] > 1) ? index : 0;
     int index2 = (grid_size[1] > 1) ? index : 0;
     int index3 = (grid_size[2] > 1) ? index : 0;
     int index4 = (grid_size[3] > 1) ? index : 0;
@@ -1365,13 +1365,13 @@ __global__ void dyn5_mex_continuous(double* const d_dPS, // outputs
 
     while (index < num_elements)
     {
-        th = TH[index1];
-        om = OM[index2];
-        dph = dPH[index3];
-        dth = dTH[index4];
-        dps = dPS[index5];
-        dom = dOM[index6];
-        dne = dNE[index7];
+        th = TH[index2];
+        om = OM[index3];
+        dph = dPH[index4];
+        dth = dTH[index5];
+        dps = dPS[index6];
+        dom = dOM[index7];
+        dne = dNE[index8];
 
         Tomega = nw*in1[uindex1];
         Tneta = nt*in2[uindex2];
@@ -1939,7 +1939,7 @@ __global__ void dyn5_mex_continuous(double* const d_dPS, // outputs
         d_dPS[index] = et7+et8;
         
         index = index + num_threads;
-        index1 = (grid_size[0] > 1) ? index : 0;
+        // index1 = (grid_size[0] > 1) ? index : 0;
         index2 = (grid_size[1] > 1) ? index : 0;
         index3 = (grid_size[2] > 1) ? index : 0;
         index4 = (grid_size[3] > 1) ? index : 0;
@@ -1971,7 +1971,7 @@ __global__ void dyn6_mex_continuous(double* const d_dOM, // outputs
     double th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
     ps = 0; ne = 0;
     
-    int index1 = (grid_size[0] > 1) ? index : 0;
+    // int index1 = (grid_size[0] > 1) ? index : 0;
     int index2 = (grid_size[1] > 1) ? index : 0;
     int index3 = (grid_size[2] > 1) ? index : 0;
     int index4 = (grid_size[3] > 1) ? index : 0;
@@ -1985,13 +1985,13 @@ __global__ void dyn6_mex_continuous(double* const d_dOM, // outputs
 
     while (index < num_elements)
     {
-        th = TH[index1];
-        om = OM[index2];
-        dph = dPH[index3];
-        dth = dTH[index4];
-        dps = dPS[index5];
-        dom = dOM[index6];
-        dne = dNE[index7];
+        th = TH[index2];
+        om = OM[index3];
+        dph = dPH[index4];
+        dth = dTH[index5];
+        dps = dPS[index6];
+        dom = dOM[index7];
+        dne = dNE[index8];
 
         Tomega = nw*in1[uindex1];
         Tneta = nt*in2[uindex2];
@@ -2559,7 +2559,7 @@ __global__ void dyn6_mex_continuous(double* const d_dOM, // outputs
         d_dOM[index] = et9+et10;
         
         index = index + num_threads;
-        index1 = (grid_size[0] > 1) ? index : 0;
+        // index1 = (grid_size[0] > 1) ? index : 0;
         index2 = (grid_size[1] > 1) ? index : 0;
         index3 = (grid_size[2] > 1) ? index : 0;
         index4 = (grid_size[3] > 1) ? index : 0;
@@ -2591,7 +2591,7 @@ __global__ void dyn7_mex_continuous(double* const d_dNE, // outputs
     double th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
     ps = 0; ne = 0;
 
-    int index1 = (grid_size[0] > 1) ? index : 0;
+    // int index1 = (grid_size[0] > 1) ? index : 0;
     int index2 = (grid_size[1] > 1) ? index : 0;
     int index3 = (grid_size[2] > 1) ? index : 0;
     int index4 = (grid_size[3] > 1) ? index : 0;
@@ -2605,13 +2605,13 @@ __global__ void dyn7_mex_continuous(double* const d_dNE, // outputs
 
     while (index < num_elements)
     {
-        th = TH[index1];
-        om = OM[index2];
-        dph = dPH[index3];
-        dth = dTH[index4];
-        dps = dPS[index5];
-        dom = dOM[index6];
-        dne = dNE[index7];
+        th = TH[index2];
+        om = OM[index3];
+        dph = dPH[index4];
+        dth = dTH[index5];
+        dps = dPS[index6];
+        dom = dOM[index7];
+        dne = dNE[index8];
 
         Tomega = nw*in1[uindex1];
         Tneta = nt*in2[uindex2];
@@ -3179,7 +3179,7 @@ __global__ void dyn7_mex_continuous(double* const d_dNE, // outputs
         d_dNE[index] = et11+et12;
         
         index = index + num_threads;
-        index1 = (grid_size[0] > 1) ? index : 0;
+        // index1 = (grid_size[0] > 1) ? index : 0;
         index2 = (grid_size[1] > 1) ? index : 0;
         index3 = (grid_size[2] > 1) ? index : 0;
         index4 = (grid_size[3] > 1) ? index : 0;
@@ -3793,43 +3793,43 @@ void mexFunction(int nlhs, mxArray* plhs[],
             mxGPUDestroyGPUArray(k2_PH);
             mxGPUDestroyGPUArray(k3_PH);
             mxGPUDestroyGPUArray(k4_PH);
-        } else if (curr_free_dim == 1) {
+        } else if (curr_free_dim == 2) {
             rk4_wbounds << <blocksPerGrid, threadsPerBlock >> > (p_THn, p_TH, p_k1_TH, p_k2_TH, p_k3_TH, p_k4_TH, dt, p_limits[1], p_limits[9], p_grid_size);
             mxGPUDestroyGPUArray(k1_TH);
             mxGPUDestroyGPUArray(k2_TH);
             mxGPUDestroyGPUArray(k3_TH);
             mxGPUDestroyGPUArray(k4_TH);
-        } else if (curr_free_dim == 2) {
+        } else if (curr_free_dim == 3) {
             rk4_wbounds << <blocksPerGrid, threadsPerBlock >> > (p_OMn, p_OM, p_k1_OM, p_k2_OM, p_k3_OM, p_k4_OM, dt, p_limits[2], p_limits[10], p_grid_size);
             mxGPUDestroyGPUArray(k1_OM);
             mxGPUDestroyGPUArray(k2_OM);
             mxGPUDestroyGPUArray(k3_OM);
             mxGPUDestroyGPUArray(k4_OM);
-        } else if (curr_free_dim == 3) {
+        } else if (curr_free_dim == 4) {
             rk4_wbounds << <blocksPerGrid, threadsPerBlock >> > (p_dPHn, p_dPH, p_k1_dPH, p_k2_dPH, p_k3_dPH, p_k4_dPH, dt, p_limits[3], p_limits[11], p_grid_size);
             mxGPUDestroyGPUArray(k1_dPH);
             mxGPUDestroyGPUArray(k2_dPH);
             mxGPUDestroyGPUArray(k3_dPH);
             mxGPUDestroyGPUArray(k4_dPH);
-        } else if (curr_free_dim == 4) {
+        } else if (curr_free_dim == 5) {
             rk4_wbounds << <blocksPerGrid, threadsPerBlock >> > (p_dTHn, p_dTH, p_k1_dTH, p_k2_dTH, p_k3_dTH, p_k4_dTH, dt, p_limits[4], p_limits[12], p_grid_size);
             mxGPUDestroyGPUArray(k1_dTH);
             mxGPUDestroyGPUArray(k2_dTH);
             mxGPUDestroyGPUArray(k3_dTH);
             mxGPUDestroyGPUArray(k4_dTH);
-        } else if (curr_free_dim == 5) {
+        } else if (curr_free_dim == 6) {
             rk4_wbounds << <blocksPerGrid, threadsPerBlock >> > (p_dPSn, p_dPS, p_k1_dPS, p_k2_dPS, p_k3_dPS, p_k4_dPS, dt, p_limits[5], p_limits[13], p_grid_size);
             mxGPUDestroyGPUArray(k1_dPS);
             mxGPUDestroyGPUArray(k2_dPS);
             mxGPUDestroyGPUArray(k3_dPS);
             mxGPUDestroyGPUArray(k4_dPS);
-        } else if (curr_free_dim == 6) {
+        } else if (curr_free_dim == 7) {
             rk4_wbounds << <blocksPerGrid, threadsPerBlock >> > (p_dOMn, p_dOM, p_k1_dOM, p_k2_dOM, p_k3_dOM, p_k4_dOM, dt, p_limits[6], p_limits[14], p_grid_size);
             mxGPUDestroyGPUArray(k1_dOM);
             mxGPUDestroyGPUArray(k2_dOM);
             mxGPUDestroyGPUArray(k3_dOM);
             mxGPUDestroyGPUArray(k4_dOM);
-        } else if (curr_free_dim == 7) {
+        } else if (curr_free_dim == 8) {
             rk4_wbounds << <blocksPerGrid, threadsPerBlock >> > (p_dNEn, p_dNE, p_k1_dNE, p_k2_dNE, p_k3_dNE, p_k4_dNE, dt, p_limits[7], p_limits[15], p_grid_size);
             mxGPUDestroyGPUArray(k1_dNE);
             mxGPUDestroyGPUArray(k2_dNE);
