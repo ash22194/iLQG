@@ -17,12 +17,13 @@ fprintf('Using GPU : %d\n', gpu_id);
 
 %% 
 
-system_name = 'cartpole';
+system_name = 'biped2d';
 restoredefaultpath();
 addpath('systems');
 addpath(strcat('systems/', system_name));
+mexcuda(strcat('systems/', system_name, '/dyn_mex_finite.cu'), '-R2018a', '-output', strcat('systems/', system_name, '/dyn_mex_finite'));
 
-decompositions = load(strcat('../iLQG_boxQP/data/multitraj/', system_name, '_pareto_repeat/summary.mat'));
+decompositions = load(strcat('../iLQG_boxQP/data/multitraj/', system_name, '_pareto/summary.mat'));
 sys = decompositions.sys;
 sys.name = strcat(system_name, '_pareto');
 
@@ -35,6 +36,7 @@ Op.u_mean_tol = (sys.lims(:,2) - sys.lims(:,1)) * 2e-6;
 Op.u_max_tol = (sys.lims(:,2) - sys.lims(:,1)) / 12;
 Op.save_dir = 'data';
 Op.reuse_policy = true;
+Op.evaluate_value = true;
 
 if (size(decompositions.policy_decompositions, 1) > 44)
     policy_decompositions = decompositions.policy_decompositions_pareto_front;
@@ -53,7 +55,7 @@ for dd=1:1:size(policy_decompositions, 1)
     fprintf('Decomposition : %d / %d\n', dd, size(policy_decompositions, 1));
     
     [policies{dd,1}, value{dd,1}, info{dd,1}] = dp_decomposition_gpu(sys, Op, p, s);
-    info{dd,1} = rmfield(info{dd,1}, 'state_grid');
+    % info{dd,1} = rmfield(info{dd,1}, 'state_grid');
 end
 
 %% Joint 
@@ -64,7 +66,7 @@ sys.decomposition_id = 0;
 
 fprintf('Joint\n');
 [policies_joint, value_joint, info_joint] = dp_decomposition_gpu(sys, Op, p_joint, s_joint);
-info_joint = rmfield(info_joint, 'state_grid');
+% info_joint = rmfield(info_joint, 'state_grid');
 
 % Compute Error
 % Find states within the bounds
@@ -81,3 +83,7 @@ for xx=1:1:sys.X_DIMS
 end
 
 err_dp = cellfun(@(x) mean(x(valid_points) - value_joint(valid_points), 'all'), value);
+policy_decompositions = cat(2, policy_decompositions(:,1:5), num2cell(err_dp), policy_decompositions(:,6:end));
+Xjoint = decompositions.Xjoint; Ujoint = decompositions.Ujoint; cjoint = decompositions.cjoint;
+Xd = decompositions.Xd; Ud = decompositions.Ud; cd = decompositions.cd;
+save(strcat(Op.save_dir, '/', sys.name, '/summary.mat'), 'Op', 'sys', 'value_joint', 'Xjoint', 'Ujoint', 'cjoint', 'Xd', 'Ud', 'cd', 'policy_decompositions', 'info', 'info_joint', '-v7.3');
