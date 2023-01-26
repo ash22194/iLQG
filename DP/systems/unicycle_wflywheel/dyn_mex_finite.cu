@@ -108,10 +108,10 @@ __global__ void dyn3_mex_continuous(double* const d_dPH, // outputs
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
     int num_elements = grid_size[0] * grid_size[1] * grid_size[2] * grid_size[3]
                         * grid_size[4] * grid_size[5] * grid_size[6] * grid_size[7];
-    double th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
+    double ph, th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
     ps = 0; ne = 0;
 
-    // int index1 = (grid_size[0] > 1) ? index : 0;
+    int index1 = (grid_size[0] > 1) ? index : 0;
     int index2 = (grid_size[1] > 1) ? index : 0;
     int index3 = (grid_size[2] > 1) ? index : 0;
     int index4 = (grid_size[3] > 1) ? index : 0;
@@ -125,6 +125,7 @@ __global__ void dyn3_mex_continuous(double* const d_dPH, // outputs
 
     while (index < num_elements)
     {
+        ph = PH[index1];
         th = TH[index2];
         om = OM[index3];
         dph = dPH[index4];
@@ -1472,7 +1473,7 @@ __global__ void dyn3_mex_continuous(double* const d_dPH, // outputs
         d_dPH[index] = et19+et20+et21+et22+et23;
         
         index = index + num_threads;
-        // index1 = (grid_size[0] > 1) ? index : 0;
+        index1 = (grid_size[0] > 1) ? index : 0;
         index2 = (grid_size[1] > 1) ? index : 0;
         index3 = (grid_size[2] > 1) ? index : 0;
         index4 = (grid_size[3] > 1) ? index : 0;
@@ -1501,10 +1502,10 @@ __global__ void dyn4_mex_continuous(double* const d_dTH, // outputs
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
     int num_elements = grid_size[0] * grid_size[1] * grid_size[2] * grid_size[3]
                         * grid_size[4] * grid_size[5] * grid_size[6] * grid_size[7];
-    double th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
+    double ph, th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
     ps = 0; ne = 0;
 
-    // int index1 = (grid_size[0] > 1) ? index : 0;
+    int index1 = (grid_size[0] > 1) ? index : 0;
     int index2 = (grid_size[1] > 1) ? index : 0;
     int index3 = (grid_size[2] > 1) ? index : 0;
     int index4 = (grid_size[3] > 1) ? index : 0;
@@ -1518,6 +1519,7 @@ __global__ void dyn4_mex_continuous(double* const d_dTH, // outputs
 
     while (index < num_elements)
     {
+        ph = PH[index1];
         th = TH[index2];
         om = OM[index3];
         dph = dPH[index4];
@@ -2865,7 +2867,7 @@ __global__ void dyn4_mex_continuous(double* const d_dTH, // outputs
         d_dTH[index] = et39+et40+et41;
         
         index = index + num_threads;
-        // index1 = (grid_size[0] > 1) ? index : 0;
+        index1 = (grid_size[0] > 1) ? index : 0;
         index2 = (grid_size[1] > 1) ? index : 0;
         index3 = (grid_size[2] > 1) ? index : 0;
         index4 = (grid_size[3] > 1) ? index : 0;
@@ -2894,10 +2896,10 @@ __global__ void dyn5_mex_continuous(double* const d_dPS, // outputs
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
     int num_elements = grid_size[0] * grid_size[1] * grid_size[2] * grid_size[3]
                         * grid_size[4] * grid_size[5] * grid_size[6] * grid_size[7];
-    double th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
+    double ph, th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
     ps = 0; ne = 0;
 
-    // int index1 = (grid_size[0] > 1) ? index : 0;
+    int index1 = (grid_size[0] > 1) ? index : 0;
     int index2 = (grid_size[1] > 1) ? index : 0;
     int index3 = (grid_size[2] > 1) ? index : 0;
     int index4 = (grid_size[3] > 1) ? index : 0;
@@ -2911,6 +2913,7 @@ __global__ void dyn5_mex_continuous(double* const d_dPS, // outputs
 
     while (index < num_elements)
     {
+        ph = PH[index1];
         th = TH[index2];
         om = OM[index3];
         dph = dPH[index4];
@@ -4258,7 +4261,7 @@ __global__ void dyn5_mex_continuous(double* const d_dPS, // outputs
         d_dPS[index] = et53+et54+et55;
         
         index = index + num_threads;
-        // index1 = (grid_size[0] > 1) ? index : 0;
+        index1 = (grid_size[0] > 1) ? index : 0;
         index2 = (grid_size[1] > 1) ? index : 0;
         index3 = (grid_size[2] > 1) ? index : 0;
         index4 = (grid_size[3] > 1) ? index : 0;
@@ -4287,10 +4290,10 @@ __global__ void dyn6_mex_continuous(double* const d_dOM, // outputs
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
     int num_elements = grid_size[0] * grid_size[1] * grid_size[2] * grid_size[3]
                         * grid_size[4] * grid_size[5] * grid_size[6] * grid_size[7];
-    double th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
+    double ph, th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
     ps = 0; ne = 0;
     
-    // int index1 = (grid_size[0] > 1) ? index : 0;
+    int index1 = (grid_size[0] > 1) ? index : 0;
     int index2 = (grid_size[1] > 1) ? index : 0;
     int index3 = (grid_size[2] > 1) ? index : 0;
     int index4 = (grid_size[3] > 1) ? index : 0;
@@ -4304,6 +4307,7 @@ __global__ void dyn6_mex_continuous(double* const d_dOM, // outputs
 
     while (index < num_elements)
     {
+        ph = PH[index1];
         th = TH[index2];
         om = OM[index3];
         dph = dPH[index4];
@@ -5651,7 +5655,7 @@ __global__ void dyn6_mex_continuous(double* const d_dOM, // outputs
         d_dOM[index] = et75+et76;
         
         index = index + num_threads;
-        // index1 = (grid_size[0] > 1) ? index : 0;
+        index1 = (grid_size[0] > 1) ? index : 0;
         index2 = (grid_size[1] > 1) ? index : 0;
         index3 = (grid_size[2] > 1) ? index : 0;
         index4 = (grid_size[3] > 1) ? index : 0;
@@ -5680,10 +5684,10 @@ __global__ void dyn7_mex_continuous(double* const d_dNE, // outputs
     int num_threads = blockDim.x * blockDim.y * gridDim.x * gridDim.y;
     int num_elements = grid_size[0] * grid_size[1] * grid_size[2] * grid_size[3]
                         * grid_size[4] * grid_size[5] * grid_size[6] * grid_size[7];
-    double th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
+    double ph, th, ps, om, ne, dph, dth, dps, dom, dne, Tneta, Tomega;
     ps = 0; ne = 0;
 
-    // int index1 = (grid_size[0] > 1) ? index : 0;
+    int index1 = (grid_size[0] > 1) ? index : 0;
     int index2 = (grid_size[1] > 1) ? index : 0;
     int index3 = (grid_size[2] > 1) ? index : 0;
     int index4 = (grid_size[3] > 1) ? index : 0;
@@ -5697,6 +5701,7 @@ __global__ void dyn7_mex_continuous(double* const d_dNE, // outputs
 
     while (index < num_elements)
     {
+        ph = PH[index1];
         th = TH[index2];
         om = OM[index3];
         dph = dPH[index4];
@@ -7044,7 +7049,7 @@ __global__ void dyn7_mex_continuous(double* const d_dNE, // outputs
         d_dNE[index] = et102+et103+et104+et105+et106;
         
         index = index + num_threads;
-        // index1 = (grid_size[0] > 1) ? index : 0;
+        index1 = (grid_size[0] > 1) ? index : 0;
         index2 = (grid_size[1] > 1) ? index : 0;
         index3 = (grid_size[2] > 1) ? index : 0;
         index4 = (grid_size[3] > 1) ? index : 0;
