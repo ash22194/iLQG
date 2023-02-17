@@ -141,10 +141,12 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
         iter = iter + 1;
         if (mod(iter, save_every)==0)
             policy = u(U_DIMS_FREE);
+            wait(D);
+            time_total_curr = toc(time_start);
             info.state_grid = x(X_DIMS_FREE);
             info.value = G_;
             info.iter = iter;
-            info.time_total = time_total;
+            info.time_total = time_total + time_total_curr;
             info.time_policy_eval = time_policy_eval;
             info.time_policy_update = time_policy_update;
             sys_ = sys;
@@ -240,7 +242,7 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
         end
     end
     wait(D)
-    time_total = toc(time_start);
+    time_total_curr = toc(time_start);
     
 %% Return
     policy = u(U_DIMS_FREE);
@@ -252,7 +254,7 @@ function [policy, info] = get_dp_solution_gpu(sys, Op, sub_policies)
     info.state_grid = x(X_DIMS_FREE);
     info.value = G_;
     info.iter = iter;
-    info.time_total = time_total;
+    info.time_total = time_total + time_total_curr;
     info.time_policy_eval = time_policy_eval;
     info.time_policy_update = time_policy_update;
 

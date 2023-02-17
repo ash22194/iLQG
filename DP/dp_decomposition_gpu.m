@@ -75,9 +75,13 @@ function [policies, value, info] = dp_decomposition_gpu(sys, Op, p, s)
 
                 disp('Final evaluation');
                 if (isfield(Op, 'evaluate_value') && Op.evaluate_value)
+                    try
                     [value, info] = policy_evaluation_gpu(sys_, Op, sub_policies);
                     value = gather(value);
                     info = rmfield(info, 'state_grid');
+                    catch ME
+                        disp(ME.identifier);
+                    end
                 else
                     value = 0;
                     info.time_policy_eval = 0;
